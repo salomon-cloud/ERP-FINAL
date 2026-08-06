@@ -1,0 +1,134 @@
+:root {
+    --sisen-blue: #0f5fb8;
+    --sisen-blue-dark: #0b3d75;
+    --sisen-bg: #f4f7fb;
+    --sisen-text: #253044;
+    --sisen-muted: #6b7280;
+    --sisen-green: #16a34a;
+    --sisen-red: #dc2626;
+    --sisen-orange: #f59e0b;
+}
+
+body {
+    background: var(--sisen-bg);
+    color: var(--sisen-text);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.auth-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f5fb8 0%, #08345f 100%);
+}
+
+.app-shell { min-height: 100vh; display: flex; }
+.sidebar {
+    width: 280px;
+    background: linear-gradient(180deg, var(--sisen-blue-dark), #092b52);
+    color: #fff;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1040;
+    transition: transform .2s ease;
+}
+.sidebar-brand { padding: 1.35rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+.brand-mark {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: var(--sisen-blue);
+    border-radius: 8px;
+    font-weight: 800;
+}
+.sidebar .nav-link {
+    color: rgba(255,255,255,.8);
+    border-radius: 8px;
+    padding: .72rem .85rem;
+    margin: .12rem .85rem;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+}
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+}
+.main-content {
+    margin-left: 280px;
+    width: calc(100% - 280px);
+    min-height: 100vh;
+}
+.topbar {
+    height: 72px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+.content-wrap { padding: 1.5rem; }
+.page-title { font-weight: 800; color: #172033; margin-bottom: .2rem; }
+.soft-card {
+    background: #fff;
+    border: 1px solid #e7edf5;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(15, 95, 184, .08);
+}
+.stat-card { padding: 1.1rem; min-height: 122px; }
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: #e8f1fb;
+    color: var(--sisen-blue);
+    font-size: 1.25rem;
+}
+.table thead th {
+    color: #516072;
+    font-size: .78rem;
+    text-transform: uppercase;
+    background: #f8fafc;
+    white-space: nowrap;
+}
+.btn-primary { background: var(--sisen-blue); border-color: var(--sisen-blue); }
+.btn-primary:hover { background: #0b4d96; border-color: #0b4d96; }
+.badge-soft { border-radius: 999px; padding: .42rem .62rem; font-weight: 700; }
+.badge-activo, .badge-pagada, .badge-aprobado, .badge-presente { background: #dcfce7; color: #166534; }
+.badge-inactivo, .badge-cancelada, .badge-rechazado, .badge-falta { background: #fee2e2; color: #991b1b; }
+.badge-pendiente, .badge-retardo { background: #fef3c7; color: #92400e; }
+.badge-permiso { background: #dbeafe; color: #1e40af; }
+.form-label { font-weight: 700; color: #374151; }
+.action-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; }
+.quick-link { text-decoration: none; color: var(--sisen-text); }
+.quick-link:hover { color: var(--sisen-blue); }
+.mobile-overlay { display: none; }
+
+@media (max-width: 991.98px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.show { transform: translateX(0); }
+    .main-content { margin-left: 0; width: 100%; }
+    .mobile-overlay.show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, .45);
+        z-index: 1030;
+    }
+    .content-wrap { padding: 1rem; }
+}
+
+@media print {
+    .sidebar, .topbar, .no-print, .mobile-overlay { display: none !important; }
+    .main-content { margin-left: 0; width: 100%; }
+    .soft-card { box-shadow: none; border: 1px solid #d1d5db; }
+}

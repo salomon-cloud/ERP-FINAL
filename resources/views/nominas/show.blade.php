@@ -1,0 +1,5 @@
+@extends('layouts.app')
+@section('header','Detalle de nomina')
+@section('content')
+<div class="soft-card p-4"><div class="d-flex justify-content-between align-items-start mb-3"><div><h2 class="h4 fw-bold">{{ $nomina->empleado->nombre_completo }}</h2><p class="text-muted">{{ $nomina->periodo_pago }} / {{ $nomina->fecha_pago->format('d/m/Y') }}</p></div>@include('partials.badge',['estado'=>$nomina->estado])</div><div class="table-responsive"><table class="table"><tbody>@foreach(['sueldo_base'=>'Sueldo base','bonos'=>'Bonos','horas_extra'=>'Horas extra','deducciones'=>'Deducciones','isr'=>'ISR','imss'=>'IMSS'] as $field=>$label)<tr><th>{{ $label }}</th><td class="text-end">${{ number_format($nomina->$field,2) }}</td></tr>@endforeach<tr class="table-primary"><th>Total a pagar</th><td class="text-end fw-bold">${{ number_format($nomina->total_pagar,2) }}</td></tr></tbody></table></div><button onclick="window.print()" class="btn btn-outline-primary no-print"><i class="bi bi-printer me-1"></i>Imprimir</button></div>
+@endsection
