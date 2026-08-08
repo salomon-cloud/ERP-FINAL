@@ -237,7 +237,20 @@ completo (empezando por el schema), y documentando la tabla nueva en
    - Los controladores no deciden nada del ciclo de vida: `PermisoController` y
      `NominaCorridaController` delegan en su Service y solo traducen el
      `RuntimeException` a un mensaje flash.
-8. Views + `TableroController.php` (sustituye al provisional, conserva `rh.dashboard`) + `RegistroMenu::registrar('RH', [...])`.
+8. ~~Views + `TableroController.php` + `RegistroMenu::registrar('RH', [...])`~~ —
+   hecho. 53 plantillas Blade, las 43 pantallas responden 200. Decisiones:
+   - Todo se pinta con los componentes compartidos (`x-page-header`, `x-card`,
+     `x-table`, `x-empty`, `x-filter-bar`, `x-badge`, `x-stat-card`) y con la
+     paleta que `sisen.css` ya tiene: el modulo no agrega una sola linea de CSS.
+   - Los badges usan `$estado->color()` para el color y `$estado->label()` para
+     el texto, que es lo que hace que un estado nuevo de RH reutilice la paleta
+     de v1 sin tocar la hoja compartida.
+   - **El tablero exige privilegio.** La pagina provisional que sustituye no lo
+     hacia, pero esta pinta plantilla, ausencias, nomina y cumpleanos. Sin el
+     guardia, cualquier usuario autenticado los veria.
+   - El organigrama se arma con dos parciales recursivos (`_departamento`,
+     `_rama`) sobre dos consultas: el arbol se construye en memoria, no con una
+     consulta por rama.
 9. Reportes (`hr.reports.*`: empleados, asistencia, permisos, nomina, contratos por vencer, headcount por departamento).
 10. Tests por recurso + por accion de ciclo de vida.
 
@@ -259,6 +272,25 @@ correctos.
    turnos: no hay contra que comparar. Se capturan en el recibo. Lo mismo aplica
    a la tolerancia de retardo, que necesita recibir la hora de entrada esperada
    como parametro.
+
+### Dos limitaciones del cascaron que RH no puede cerrar solo
+
+Las dos nacen de lo mismo: un modulo no tiene un ServiceProvider propio, y
+registrarlo exigiria editar `bootstrap/providers.php`, en la raiz del proyecto.
+
+1. **Las entradas del menu se pierden con `php artisan route:cache`.**
+   `Routes/web.php` es el unico gancho de arranque de un modulo, y
+   `ModuleServiceProvider` no lo carga cuando las rutas estan cacheadas. En ese
+   caso RH conserva su entrada de tablero (que registra el cascaron) pero pierde
+   las 12 suyas. En desarrollo no pasa; en un despliegue con rutas cacheadas, si.
+2. **La entrada de tablero que el cascaron auto-registra no lleva privilegio**,
+   asi que un usuario sin acceso a RH ve el enlace y recibe un 403 al entrar. El
+   dato esta protegido --- se verifico ---, pero la barra lateral promete algo
+   que no puede cumplir.
+
+Las dos se arreglan con un `Providers/RHServiceProvider` de dos lineas mas su
+registro en `bootstrap/providers.php`. Es la unica edicion fuera del modulo que
+haria falta, y `PLANNING.md` (Apendice A.4) la contempla explicitamente.
 
 ### Resuelto sin tocar la raiz del proyecto
 

@@ -27,7 +27,7 @@ declare(strict_types=1);
 |
 */
 
-use App\Modules\Compartido\Controllers\TableroModuloController;
+use App\Modules\Compartido\Support\RegistroMenu;
 use App\Modules\RH\Controllers\AsistenciaController;
 use App\Modules\RH\Controllers\ContratoController;
 use App\Modules\RH\Controllers\DepartamentoController;
@@ -40,12 +40,53 @@ use App\Modules\RH\Controllers\NominaPeriodoController;
 use App\Modules\RH\Controllers\OrganigramaController;
 use App\Modules\RH\Controllers\PermisoController;
 use App\Modules\RH\Controllers\PuestoController;
+use App\Modules\RH\Controllers\TableroController;
 use Illuminate\Support\Facades\Route;
 
-// Pagina de entrada provisional del modulo. Sustituyela por el TableroController
-// propio (Controllers/TableroController.php) conservando el nombre de ruta
-// "rh.dashboard": la barra lateral apunta ahi.
-Route::get('/', TableroModuloController::class)->name('dashboard');
+// El tablero del modulo. Conserva el nombre "rh.dashboard" porque es al que
+// apunta la barra lateral.
+//
+// A diferencia de la pagina provisional que sustituye, este tablero pinta datos
+// reales -- plantilla, ausencias del dia, nomina, cumpleanos -- asi que exige
+// privilegio. Basta con cualquiera de lectura del modulo.
+//
+// Nota: la entrada de la barra lateral que el cascaron registra sola para cada
+// modulo NO lleva privilegio, asi que un usuario sin acceso a RH seguira viendo
+// el enlace y recibira un 403 al entrar. Emparejarlo exige que
+// ModuleServiceProvider pase un privilegio al auto-registrar, y ese archivo
+// vive fuera de este modulo.
+Route::get('/', TableroController::class)
+    ->name('dashboard')
+    ->middleware('permission:rh.empleados.ver,rh.asistencias.ver,rh.permisos.ver,rh.nomina.ver');
+
+/*
+ * Entradas de la barra lateral.
+ *
+ * El cascaron ya registra solo la del tablero; estas son las de RH. Las que
+ * apuntan a una ruta inexistente o a un privilegio que el usuario no tiene
+ * nunca se pintan, de eso se encarga RegistroMenu::visiblesPara().
+ *
+ * CUIDADO: este archivo es el unico gancho de arranque que tiene un modulo, y
+ * ModuleServiceProvider no lo carga cuando las rutas estan cacheadas
+ * (`php artisan route:cache`). En ese caso el modulo conserva su entrada de
+ * tablero pero pierde estas. La solucion definitiva es un
+ * Providers/RHServiceProvider, que exige registrarlo en bootstrap/providers.php
+ * -- fuera de este modulo. Ver PLAN_IMPLEMENTACION.md.
+ */
+RegistroMenu::registrar('RH', [
+    ['etiqueta' => 'Empleados', 'icono' => 'people', 'ruta' => 'rh.empleados.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 51],
+    ['etiqueta' => 'Departamentos', 'icono' => 'building', 'ruta' => 'rh.departamentos.index', 'privilegio' => 'rh.departamentos.ver', 'orden' => 52],
+    ['etiqueta' => 'Puestos', 'icono' => 'briefcase', 'ruta' => 'rh.puestos.index', 'privilegio' => 'rh.puestos.ver', 'orden' => 53],
+    ['etiqueta' => 'Organigrama', 'icono' => 'diagram-3', 'ruta' => 'rh.organigrama', 'privilegio' => 'rh.organigrama.ver', 'orden' => 54],
+    ['etiqueta' => 'Asistencias', 'icono' => 'calendar-check', 'ruta' => 'rh.asistencias.index', 'privilegio' => 'rh.asistencias.ver', 'orden' => 55],
+    ['etiqueta' => 'Permisos', 'icono' => 'calendar2-week', 'ruta' => 'rh.permisos.index', 'privilegio' => 'rh.permisos.ver', 'orden' => 56],
+    ['etiqueta' => 'Periodos de nomina', 'icono' => 'calendar3', 'ruta' => 'rh.nomina-periodos.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 57],
+    ['etiqueta' => 'Corridas de nomina', 'icono' => 'cash-stack', 'ruta' => 'rh.nomina-corridas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 58],
+    ['etiqueta' => 'Recibos', 'icono' => 'receipt', 'ruta' => 'rh.nominas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 59],
+    ['etiqueta' => 'Contratos', 'icono' => 'file-earmark-text', 'ruta' => 'rh.contratos.index', 'privilegio' => 'rh.contratos.ver', 'orden' => 60],
+    ['etiqueta' => 'Documentos', 'icono' => 'folder2-open', 'ruta' => 'rh.documentos.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 61],
+    ['etiqueta' => 'Evaluaciones', 'icono' => 'clipboard-check', 'ruta' => 'rh.evaluaciones.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 62],
+]);
 
 /*
  * Catalogos: los datos maestros de la organizacion.
