@@ -40,6 +40,7 @@ use App\Modules\RH\Controllers\NominaPeriodoController;
 use App\Modules\RH\Controllers\OrganigramaController;
 use App\Modules\RH\Controllers\PermisoController;
 use App\Modules\RH\Controllers\PuestoController;
+use App\Modules\RH\Controllers\ReporteController;
 use App\Modules\RH\Controllers\TableroController;
 use Illuminate\Support\Facades\Route;
 
@@ -72,20 +73,26 @@ Route::get('/', TableroController::class)
  * tablero pero pierde estas. La solucion definitiva es un
  * Providers/RHServiceProvider, que exige registrarlo en bootstrap/providers.php
  * -- fuera de este modulo. Ver PLAN_IMPLEMENTACION.md.
+ *
+ * Sobre el `orden`: cada modulo tiene una banda de diez (RH = 50, CRM = 60), y
+ * las entradas de RH TIENEN que caber entre 50 y 60. Con enteros no caben doce,
+ * y usar 60, 61, 62 metia a CRM en medio de la lista de RH. Por eso van con
+ * decimales: 50.01 .. 50.12 ordenan bien entre si y ninguna se pasa al vecino.
  */
 RegistroMenu::registrar('RH', [
-    ['etiqueta' => 'Empleados', 'icono' => 'people', 'ruta' => 'rh.empleados.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 51],
-    ['etiqueta' => 'Departamentos', 'icono' => 'building', 'ruta' => 'rh.departamentos.index', 'privilegio' => 'rh.departamentos.ver', 'orden' => 52],
-    ['etiqueta' => 'Puestos', 'icono' => 'briefcase', 'ruta' => 'rh.puestos.index', 'privilegio' => 'rh.puestos.ver', 'orden' => 53],
-    ['etiqueta' => 'Organigrama', 'icono' => 'diagram-3', 'ruta' => 'rh.organigrama', 'privilegio' => 'rh.organigrama.ver', 'orden' => 54],
-    ['etiqueta' => 'Asistencias', 'icono' => 'calendar-check', 'ruta' => 'rh.asistencias.index', 'privilegio' => 'rh.asistencias.ver', 'orden' => 55],
-    ['etiqueta' => 'Permisos', 'icono' => 'calendar2-week', 'ruta' => 'rh.permisos.index', 'privilegio' => 'rh.permisos.ver', 'orden' => 56],
-    ['etiqueta' => 'Periodos de nomina', 'icono' => 'calendar3', 'ruta' => 'rh.nomina-periodos.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 57],
-    ['etiqueta' => 'Corridas de nomina', 'icono' => 'cash-stack', 'ruta' => 'rh.nomina-corridas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 58],
-    ['etiqueta' => 'Recibos', 'icono' => 'receipt', 'ruta' => 'rh.nominas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 59],
-    ['etiqueta' => 'Contratos', 'icono' => 'file-earmark-text', 'ruta' => 'rh.contratos.index', 'privilegio' => 'rh.contratos.ver', 'orden' => 60],
-    ['etiqueta' => 'Documentos', 'icono' => 'folder2-open', 'ruta' => 'rh.documentos.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 61],
-    ['etiqueta' => 'Evaluaciones', 'icono' => 'clipboard-check', 'ruta' => 'rh.evaluaciones.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 62],
+    ['etiqueta' => 'Empleados', 'icono' => 'people', 'ruta' => 'rh.empleados.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 50.01],
+    ['etiqueta' => 'Departamentos', 'icono' => 'building', 'ruta' => 'rh.departamentos.index', 'privilegio' => 'rh.departamentos.ver', 'orden' => 50.02],
+    ['etiqueta' => 'Puestos', 'icono' => 'briefcase', 'ruta' => 'rh.puestos.index', 'privilegio' => 'rh.puestos.ver', 'orden' => 50.03],
+    ['etiqueta' => 'Organigrama', 'icono' => 'diagram-3', 'ruta' => 'rh.organigrama', 'privilegio' => 'rh.organigrama.ver', 'orden' => 50.04],
+    ['etiqueta' => 'Asistencias', 'icono' => 'calendar-check', 'ruta' => 'rh.asistencias.index', 'privilegio' => 'rh.asistencias.ver', 'orden' => 50.05],
+    ['etiqueta' => 'Permisos', 'icono' => 'calendar2-week', 'ruta' => 'rh.permisos.index', 'privilegio' => 'rh.permisos.ver', 'orden' => 50.06],
+    ['etiqueta' => 'Periodos de nomina', 'icono' => 'calendar3', 'ruta' => 'rh.nomina-periodos.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 50.07],
+    ['etiqueta' => 'Corridas de nomina', 'icono' => 'cash-stack', 'ruta' => 'rh.nomina-corridas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 50.08],
+    ['etiqueta' => 'Recibos', 'icono' => 'receipt', 'ruta' => 'rh.nominas.index', 'privilegio' => 'rh.nomina.ver', 'orden' => 50.09],
+    ['etiqueta' => 'Contratos', 'icono' => 'file-earmark-text', 'ruta' => 'rh.contratos.index', 'privilegio' => 'rh.contratos.ver', 'orden' => 50.10],
+    ['etiqueta' => 'Documentos', 'icono' => 'folder2-open', 'ruta' => 'rh.documentos.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 50.11],
+    ['etiqueta' => 'Evaluaciones', 'icono' => 'clipboard-check', 'ruta' => 'rh.evaluaciones.index', 'privilegio' => 'rh.empleados.ver', 'orden' => 50.12],
+    ['etiqueta' => 'Reportes de RH', 'icono' => 'bar-chart', 'ruta' => 'rh.reportes.index', 'privilegio' => 'rh.reportes.ver', 'orden' => 50.13],
 ]);
 
 /*
@@ -162,3 +169,17 @@ Route::resource('documentos', DocumentoEmpleadoController::class)
 Route::resource('evaluaciones', EvaluacionDesempenoController::class)
     ->parameters(['evaluaciones' => 'evaluacion'])
     ->middleware('permission:rh.empleados.ver');
+
+/*
+ * Reportes. Todos son de solo lectura y aceptan ?formato=csv para descargarse
+ * con exactamente los mismos datos que se ven en pantalla.
+ */
+Route::middleware('permission:rh.reportes.ver')->group(function (): void {
+    Route::get('reportes', [ReporteController::class, 'index'])->name('reportes.index');
+    Route::get('reportes/empleados', [ReporteController::class, 'empleados'])->name('reportes.empleados');
+    Route::get('reportes/asistencias', [ReporteController::class, 'asistencias'])->name('reportes.asistencias');
+    Route::get('reportes/permisos', [ReporteController::class, 'permisos'])->name('reportes.permisos');
+    Route::get('reportes/nomina', [ReporteController::class, 'nomina'])->name('reportes.nomina');
+    Route::get('reportes/contratos-por-vencer', [ReporteController::class, 'contratosPorVencer'])->name('reportes.contratos-por-vencer');
+    Route::get('reportes/plantilla-por-departamento', [ReporteController::class, 'plantillaPorDepartamento'])->name('reportes.plantilla-por-departamento');
+});

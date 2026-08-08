@@ -251,8 +251,22 @@ completo (empezando por el schema), y documentando la tabla nueva en
    - El organigrama se arma con dos parciales recursivos (`_departamento`,
      `_rama`) sobre dos consultas: el arbol se construye en memoria, no con una
      consulta por rama.
-9. Reportes (`hr.reports.*`: empleados, asistencia, permisos, nomina, contratos por vencer, headcount por departamento).
-10. Tests por recurso + por accion de ciclo de vida.
+9. ~~Reportes~~ — hecho. Seis (`rh.reportes.*`): plantilla, asistencia,
+   permisos, nomina, contratos por vencer y plantilla por departamento. La MISMA
+   consulta alimenta la pantalla y el CSV, asi que lo exportado es exactamente
+   lo que se vio; `?formato=csv` es lo unico que cambia, y el enlace conserva
+   los filtros vigentes. El CSV se escribe en streaming y lleva BOM de UTF-8,
+   porque sin el Excel en Windows rompe los acentos. `Utils/ExportadorCsv` se
+   retira cuando Compartido publique su ExportService.
+10. ~~Tests~~ — hecho. 37 pruebas del modulo en `tests/Feature/Modules/RH/`:
+    `AutorizacionTest`, `EmpleadoTest`, `CicloDeVidaTest`, `ObservadoresTest` y
+    `PantallasTest`, sobre la clase base `PruebaRH`. Dos de ellas son guardias
+    contra errores que ya cometimos una vez:
+    - que ninguna ruta de RH quede sin privilegio, y que los privilegios que las
+      rutas citan existan de verdad en la base (uno inventado dejaria el modulo
+      inaccesible sin avisar);
+    - que ninguna entrada del menu se pase a la banda del modulo vecino, que fue
+      lo que metio a CRM en medio de la lista de RH.
 
 ### Decisiones de negocio pendientes de confirmar con RH
 
