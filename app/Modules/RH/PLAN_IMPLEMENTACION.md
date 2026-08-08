@@ -223,7 +223,20 @@ completo (empezando por el schema), y documentando la tabla nueva en
      Si no afecta ninguna fila, alguien mas movio la corrida y se aborta.
    - Los mensajes de validacion en espanol viven en `RequestBase::messages()`,
      dentro del modulo, en vez de publicar `lang/es` en la raiz.
-7. Routes (`Routes/web.php`, catalogos primero, paginas despues).
+7. ~~Routes (`Routes/web.php`, catalogos primero, paginas despues)~~ — hecho.
+   79 rutas y 12 controladores (11 de recurso + `OrganigramaController`).
+   Decisiones:
+   - Los privilegios NO se inventaron: son los que `RolPrivilegioSeeder` ya
+     siembra para `rh` (empleados, departamentos, puestos, asistencias, permisos
+     +aprobar, nomina +procesar +aplicar, contratos, organigrama, reportes).
+   - `documentos` y `evaluaciones` no tienen privilegio propio sembrado y por eso
+     van bajo `rh.empleados.*`: las dos son parte del expediente. Cuando se
+     pueda tocar el seeder (vive en la raiz), se les da el suyo.
+   - Aprobar y rechazar un permiso son UNA sola ruta (`permisos.revisar`): son
+     la misma decision, y `RevisarPermisoRequest` acota a esos dos estados.
+   - Los controladores no deciden nada del ciclo de vida: `PermisoController` y
+     `NominaCorridaController` delegan en su Service y solo traducen el
+     `RuntimeException` a un mensaje flash.
 8. Views + `TableroController.php` (sustituye al provisional, conserva `rh.dashboard`) + `RegistroMenu::registrar('RH', [...])`.
 9. Reportes (`hr.reports.*`: empleados, asistencia, permisos, nomina, contratos por vencer, headcount por departamento).
 10. Tests por recurso + por accion de ciclo de vida.

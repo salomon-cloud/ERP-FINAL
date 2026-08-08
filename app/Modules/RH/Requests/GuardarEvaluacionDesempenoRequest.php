@@ -19,7 +19,8 @@ class GuardarEvaluacionDesempenoRequest extends RequestBase
 {
     public function rules(): array
     {
-        $id = $this->idEnRuta('evaluacion_desempeno');
+        // El nombre del parametro lo fija Routes/web.php: {evaluacion}.
+        $id = $this->idEnRuta('evaluacion');
 
         return [
             'empleado_id' => ['required', 'integer', 'exists:empleados,id'],
