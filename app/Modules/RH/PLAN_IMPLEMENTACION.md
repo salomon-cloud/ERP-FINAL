@@ -287,6 +287,29 @@ correctos.
    a la tolerancia de retardo, que necesita recibir la hora de entrada esperada
    como parametro.
 
+### Excepcion aprobada al limite de alcance: el desplegable del menu
+
+Con doce entradas propias, RH llenaba la barra lateral con una lista plana muy
+larga. A peticion explicita se agrupo en un desplegable, lo que exigio tocar
+`resources/views/layouts/app.blade.php` y `public/css/sisen.css` --- las dos
+UNICAS ediciones de este trabajo fuera de `app/Modules/RH/`, aparte del cambio
+de `orden` en `Routes/web.php` que ya se documenta abajo.
+
+El cambio es generico, no exclusivo de RH: agrupa CUALQUIER modulo que registre
+mas de una entrada (hoy solo RH; Finanzas, Ventas, Compras, Inventario y CRM
+siguen como enlaces sueltos porque solo tienen su tablero). No hizo falta
+JavaScript nuevo: usa el plugin `collapse` que trae `bootstrap.bundle.min.js`
+del layout.
+
+Un bug real de Blade salio a la luz al escribirlo: el compilador de Blade
+extrae los bloques `@php ... @endphp` con una regex que NO distingue el atajo
+de una linea `@php($x = 1)` (que no cierra con `@endphp`) de un bloque real. Si
+un atajo aparece antes de un bloque real mas abajo en el mismo archivo, la
+regex empareja el atajo con el `@endphp` del bloque, y se traga todo lo de en
+medio como texto literal (se ve en pantalla como codigo Blade sin compilar). La
+correccion fue no usar el atajo: los dos `@php` de esta seccion son bloques
+completos con su propio `@endphp` inmediato.
+
 ### Dos limitaciones del cascaron que RH no puede cerrar solo
 
 Las dos nacen de lo mismo: un modulo no tiene un ServiceProvider propio, y

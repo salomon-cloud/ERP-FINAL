@@ -57,6 +57,17 @@ body {
     background: rgba(255,255,255,.12);
     color: #fff;
 }
+/* Submenu de un modulo con varias entradas (ver layouts/app.blade.php). */
+.sidebar .nav-link-sub {
+    padding-left: 2.6rem;
+    font-size: .92rem;
+}
+.sidebar .sidebar-toggle .bi-chevron-down {
+    transition: transform .2s ease;
+}
+.sidebar .sidebar-toggle[aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
+}
 .sidebar-section {
     color: rgba(255,255,255,.45);
     font-size: .72rem;

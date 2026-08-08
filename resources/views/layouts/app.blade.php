@@ -39,16 +39,56 @@
         </nav>
 
         {{-- Cada modulo registra sus propias entradas en RegistroMenu; este bloque
-             no se toca al agregar un modulo. Ver PLANNING - Dashboard Philosophy. --}}
-        @php($menuModulos = \App\Modules\Compartido\Support\RegistroMenu::visiblesPara(auth()->user()))
-        @if(count($menuModulos))
+             no se toca al agregar un modulo. Ver PLANNING - Dashboard Philosophy.
+
+             Un modulo con una sola entrada (su tablero, el que se auto-registra)
+             se pinta como enlace suelto, igual que siempre. Un modulo con varias
+             --- como RH, con doce --- se agrupa en un desplegable de Bootstrap,
+             para no llenar la barra con una lista plana de enlaces. --}}
+        @php
+            $entradasPorModulo = collect(\App\Modules\Compartido\Support\RegistroMenu::visiblesPara(auth()->user()))
+                ->groupBy('modulo');
+
+            // El prefijo que decide si un enlace esta activo: los dos primeros
+            // segmentos del nombre de ruta ("rh.empleados.index" -> "rh.empleados"),
+            // o la ruta completa cuando no tiene un tercer segmento ("rh.organigrama").
+            $prefijoDeRuta = fn (string $ruta) => count($p = explode('.', $ruta)) >= 3 ? $p[0].'.'.$p[1] : $ruta;
+            $rutaActiva = fn (string $ruta) => request()->routeIs($prefijoDeRuta($ruta))
+                || request()->routeIs($prefijoDeRuta($ruta).'.*');
+        @endphp
+        @if($entradasPorModulo->isNotEmpty())
             <div class="sidebar-section">Modulos ERP</div>
             <nav class="nav flex-column pb-3">
-                @foreach($menuModulos as $entrada)
-                    <a class="nav-link {{ request()->routeIs(\Illuminate\Support\Str::before($entrada['ruta'], '.').'.*') ? 'active' : '' }}"
-                       href="{{ route($entrada['ruta']) }}">
-                        <i class="bi bi-{{ $entrada['icono'] }}"></i> {{ $entrada['etiqueta'] }}
-                    </a>
+                @foreach($entradasPorModulo as $modulo => $entradas)
+                    @if($entradas->count() === 1)
+                        @php
+                            $entrada = $entradas->first();
+                        @endphp
+                        <a class="nav-link {{ $rutaActiva($entrada['ruta']) ? 'active' : '' }}"
+                           href="{{ route($entrada['ruta']) }}">
+                            <i class="bi bi-{{ $entrada['icono'] }}"></i> {{ $entrada['etiqueta'] }}
+                        </a>
+                    @else
+                        @php
+                            $metadatos = \App\Modules\Compartido\Support\RegistroMenu::metadatos($modulo);
+                            $idDesplegable = 'menu-'.\Illuminate\Support\Str::slug($modulo);
+                            $moduloActivo = $entradas->contains(fn ($e) => $rutaActiva($e['ruta']));
+                        @endphp
+                        <a class="nav-link sidebar-toggle d-flex justify-content-between align-items-center {{ $moduloActivo ? 'active' : '' }}"
+                           href="#{{ $idDesplegable }}" data-bs-toggle="collapse" role="button"
+                           aria-expanded="{{ $moduloActivo ? 'true' : 'false' }}" aria-controls="{{ $idDesplegable }}">
+                            <span><i class="bi bi-{{ $metadatos['icono'] }}"></i> {{ $metadatos['etiqueta'] }}</span>
+                            <i class="bi bi-chevron-down small"></i>
+                        </a>
+                        <div class="collapse {{ $moduloActivo ? 'show' : '' }}" id="{{ $idDesplegable }}">
+                            @foreach($entradas as $entrada)
+                                <a class="nav-link nav-link-sub {{ $rutaActiva($entrada['ruta']) ? 'active' : '' }}"
+                                   href="{{ route($entrada['ruta']) }}">
+                                    <i class="bi bi-{{ $entrada['icono'] }}"></i> {{ $entrada['etiqueta'] }}
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                 @endforeach
             </nav>
         @endif
