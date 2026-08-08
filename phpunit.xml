@@ -23,8 +23,13 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!-- SISEN corre sobre MariaDB y las pruebas tambien: asi se ejercitan de
+             verdad las restricciones CHECK y los indices unicos que ignoran el
+             borrado logico, que SQLite no sabe reproducir.
+             Crea la base una sola vez:
+             mysql -u root -e "CREATE DATABASE IF NOT EXISTS sisen_test" -->
+        <env name="DB_CONNECTION" value="mariadb"/>
+        <env name="DB_DATABASE" value="sisen_test"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

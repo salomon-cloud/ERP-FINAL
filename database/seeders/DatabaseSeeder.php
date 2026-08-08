@@ -21,6 +21,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Primero lo que la aplicacion necesita para funcionar (roles,
+        // privilegios, catalogos, folios); despues los datos de demostracion
+        // de SISEN v1 que vienen a continuacion.
+        $this->call(CimientosSeeder::class);
+
         $departamentos = collect([
             ['nombre' => 'Recursos Humanos', 'descripcion' => 'Gestion de talento, contratos y clima laboral.', 'responsable' => 'Laura Martinez'],
             ['nombre' => 'Finanzas', 'descripcion' => 'Contabilidad, pagos y reportes financieros.', 'responsable' => 'Carlos Rivera'],

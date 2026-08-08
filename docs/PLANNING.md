@@ -1,10 +1,86 @@
 # SISEN ERP — Master Planning Document
 
-> **Status:** Baseline / Foundation (v1.0)
+> **Status:** Baseline / Foundation (v1.1)
 > **Project:** SISEN (Sistema Empresarial Integrado de Nominas y Empresa)
-> **Stack:** Laravel 12 · PHP 8.2 · Blade · Bootstrap 5.3 · PostgreSQL (target)
+> **Stack:** Laravel 12 · PHP 8.2 · Blade · Bootstrap 5.3 · **MariaDB**
 > **Audience:** All module development teams (2 developers per module) and AI assistants (e.g. Claude Code) that will continue implementation module by module.
 > **Guiding rule:** This document is the single source of truth. If there is ever ambiguity, resolve it here first.
+
+---
+
+# Decisiones v1.1 — leelas antes que nada
+
+Estas cuatro decisiones **sustituyen** lo que diga cualquier seccion posterior
+escrita en la version 1.0 del documento. Donde haya conflicto, mandan estas.
+
+### 1. MariaDB, y solo MariaDB
+
+Se descarta PostgreSQL como objetivo. La aplicacion, el esquema de referencia y
+la suite de pruebas corren sobre **MariaDB** (driver `mariadb` de Laravel). No
+hay compatibilidad multi-motor que mantener, y por eso las restricciones `CHECK`
+y los indices unicos que ignoran el borrado logico son garantias reales y no
+"documentacion aspiracional".
+
+Las pruebas tambien corren sobre MariaDB (`phpunit.xml` apunta a `sisen_test`),
+justamente para ejercitar esas restricciones. Crea la base una sola vez:
+
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS sisen_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+```
+
+### 2. `ERP.sql` se GENERA; el esquema vive en las migraciones
+
+El esquema se crea y evoluciona **solo** con `php artisan migrate`. `ERP.sql`
+nunca se importa: es el contrato de base de datos que los equipos leen, y se
+regenera desde las migraciones para que no pueda desviarse de ellas:
+
+```bash
+php artisan sisen:esquema      # vuelca ERP.sql desde una base recien migrada
+```
+
+Si tu cambio de esquema no esta en una migracion, no existe.
+
+### 3. Todo en espanol, la base de datos incluida
+
+Tablas, columnas, nombres de modulo, archivos de migracion, clases, metodos,
+variables y comentarios van en espanol, igual que las pantallas y las tablas que
+SISEN v1 ya tenia (`departamentos`, `empleados`, `nominas`).
+
+Solo conservan su nombre en ingles los elementos del framework, porque
+renombrarlos romperia Laravel sin ganar nada: la tabla `users` y las columnas
+`created_at`, `updated_at`, `deleted_at`, `password`, `remember_token`. Las
+carpetas estructurales de cada modulo (`Controllers/`, `Models/`, `Services/`,
+`Migrations/`, ...) tambien se quedan como estan, porque son el contrato de
+arquitectura descrito mas abajo.
+
+Los modulos y sus prefijos quedan asi:
+
+| Carpeta | URL | Rutas | Vistas |
+|---|---|---|---|
+| `Compartido` | (raiz) | `compartido.*` | `compartido::` |
+| `Finanzas` | `/finanzas` | `finanzas.*` | `finanzas::` |
+| `Inventario` | `/inventario` | `inventario.*` | `inventario::` |
+| `RH` | `/rh` | `rh.*` | `rh::` |
+| `Ventas` | `/ventas` | `ventas.*` | `ventas::` |
+| `Compras` | `/compras` | `compras.*` | `compras::` |
+| `CRM` | `/crm` | `crm.*` | `crm::` |
+
+Un choque de nombres a tener presente: v1 ya usa `permisos` para las solicitudes
+de permiso y vacaciones, asi que los permisos de autorizacion se llaman
+**`privilegios`** (`rol_privilegios`, `usuario_roles`).
+
+### 4. RH EXTIENDE las tablas de v1; no crea tablas paralelas
+
+`departamentos`, `puestos`, `empleados`, `asistencias`, `permisos` y `nominas`
+son las tablas de RH del ERP. Las migraciones del modulo les **agregan**
+columnas (jerarquia, datos fiscales y bancarios, auditoria, borrado logico) sin
+renombrar ni eliminar nada de v1.
+
+Esto elimina la duplicacion `departments`/`departamentos` que planteaba la v1.0
+del documento: hay una sola verdad sobre un empleado, y las pantallas de v1
+siguen funcionando sin tocarlas. La nomina se despliega en los tres niveles que
+necesita (`nomina_periodos` -> `nomina_corridas` -> `nominas`), donde `nominas`
+sigue siendo el recibo por empleado de siempre, ahora con `corrida_id`.
 
 ---
 
@@ -65,9 +141,9 @@ This section captures what exists today so all teams share the same mental model
 
 These are known gaps. They are addressed by the target architecture in this document. They must be introduced incrementally by the relevant teams, never in a breaking batch:
 
-1. **Roles & permissions are not normalized.** `users.role` is a single enum column. Target: `roles`, `permissions`, `role_permissions`, `user_roles` (see `ERP.sql`). The prototype keeps working; new modules read from the new model via a compatibility layer (see *Roles & Permissions*).
-2. **Database driver mismatch.** Prototype runs MySQL; the target schema in `ERP.sql` is PostgreSQL. Teams must port the PostgreSQL schema into Laravel migrations for the running application (see *Database Standards*).
-3. **`users.empleado_id`** has no foreign key constraint in the migration. Must be added in the port.
+1. ~~**Roles & permissions are not normalized.**~~ **RESUELTO en v1.1.** `roles`, `privilegios`, `rol_privilegios` y `usuario_roles` ya existen. La columna `users.role` de v1 se queda y `User::hasAnyRole()` responde desde las dos fuentes, asi que ninguna ruta ni vista de v1 cambio (ver *Roles & Permissions*).
+2. ~~**Database driver mismatch.**~~ **RESUELTO en v1.1.** No hay tal desajuste: el objetivo es MariaDB, el mismo motor sobre el que ya corria el prototipo. Ver *Decisiones v1.1*.
+3. ~~**`users.empleado_id` no tiene llave foranea.**~~ **RESUELTO en v1.1** por la migracion `extender_tabla_users`.
 4. **Dual front-end tooling.** Tailwind (via Vite) is configured but Bootstrap CDN is the real design system. Decision for the future: **stay on Bootstrap 5 + custom `sisen.css`** to keep the visual language intact; drop Tailwind only when a dedicated refactor is planned. New components MUST use Bootstrap + the SISEN tokens.
 5. **No audit fields, no soft delete.** Prototype tables only have `timestamps()`. Target: `created_by`, `updated_by`, `deleted_at`, `row_version`.
 6. **No API.** Target: JSON API per module behind `api/*` (see *API Structure*).
@@ -140,17 +216,21 @@ The architecture follows principles observed in SAP/Odoo/ERPNext/Dynamics but ad
 
 ## Module map and ownership (RACI-lite)
 
-| # | Module (folder) | Owns (tables) | Depends on |
+| # | Modulo (carpeta) | Tablas propias | Depende de |
 |---|---|---|---|
-| 0 | `Shared` | roles, permissions, users, settings, catalogs, audit, notifications, attachments, tags, favorites, comments, sequences | — |
-| 1 | `HR` | departments, positions, employees, attendance, leaves, payroll, contracts, documents, performance | Shared |
-| 2 | `Finance` | chart of accounts, journal entries, fiscal periods, cost centers, budgets, banks, taxes, invoices (CFDI), reports | Shared, HR (payroll posting) |
-| 3 | `Sales` | customers, quotes, orders, invoices, credit notes, payments, price lists | Shared, Finance, Inventory (products) |
-| 4 | `Purchasing` | suppliers, purchase requests/orders, goods receipts, vendor bills, returns, supplier payments | Shared, Finance, Inventory |
-| 5 | `Inventory` | products, categories, units, warehouses, locations, lots, serials, movements, counts, reorder rules | Shared |
-| 6 | `CRM` | leads, opportunities, contacts, companies, activities, tasks, notes, funnel | Shared, Sales (customers) |
+| 0 | `Compartido` | organizaciones, users, roles, privilegios, rol_privilegios, usuario_roles, bitacora_auditoria, notificaciones, configuraciones, catalogos, adjuntos, etiquetas, favoritos, comentarios, secuencias_documento, lotes_importacion, reportes_guardados | — |
+| 1 | `Finanzas` | catalogo_cuentas, periodos_fiscales, centros_costo, polizas, poliza_lineas, presupuestos, cuentas_bancarias, movimientos_bancarios, conciliaciones_bancarias, impuestos, facturas_electronicas, tipos_cambio | Compartido |
+| 2 | `Inventario` | almacenes, ubicaciones, categorias_producto, unidades_medida, productos, codigos_barras, lotes, numeros_serie, movimientos_inventario, traspasos, ajustes_inventario, conteos_inventario, reglas_reorden | Compartido, Finanzas (impuestos) |
+| 3 | `RH` | departamentos, puestos, empleados, asistencias, permisos, nominas (las seis de v1, extendidas), nomina_periodos, nomina_corridas, contratos, documentos_empleado, evaluaciones_desempeno | Compartido, Finanzas |
+| 4 | `Ventas` | clientes, listas_precios, cotizaciones, pedidos, facturas, notas_credito, cobros (+ sus lineas) | Compartido, Inventario, Finanzas |
+| 5 | `Compras` | proveedores, requisiciones, ordenes_compra, recepciones, facturas_proveedor, devoluciones_compra, pagos (+ sus lineas) | Compartido, Inventario, Finanzas, RH |
+| 6 | `CRM` | empresas, prospectos, contactos, oportunidades, actividades, notas_crm, tareas | Compartido, Ventas (clientes) |
 
-> Order of work recommendation: **Shared → HR → Inventory → Finance → Sales → Purchasing → CRM**. Finance is the center of gravity; Inventory feeds Sales/Purchasing.
+> El orden de migracion (y de trabajo) es el de la tabla: **Compartido → Finanzas
+> → Inventario → RH → Ventas → Compras → CRM**. No es arbitrario: es el orden de
+> dependencia de las llaves foraneas, y por eso las marcas de tiempo de las
+> migraciones van 100 → 200 → 300 → 400 → 500 → 600 → 700, con las vistas de
+> reporte al final en 900.
 
 ---
 
@@ -399,25 +479,35 @@ ERP-FINAL/
 
 # Database Standards
 
-> The target database is defined once in `ERP.sql` (PostgreSQL). The running Laravel application uses MySQL today; each module team **ports** its ERP.sql tables into Laravel migrations located in `app/Modules/<Module>/Migrations/`. The ERP.sql schema is the contract; Laravel migrations are the implementation.
+> El esquema vive en las migraciones de `app/Modules/<Modulo>/Migrations/`.
+> `ERP.sql` es su reflejo generado (`php artisan sisen:esquema`) y nunca se
+> importa. Todas las migraciones usan los ayudantes de
+> `App\Modules\Compartido\Support\EsquemaErp`, que son los que hacen cumplir lo
+> de abajo sin que cada equipo tenga que recordarlo.
 
-## Universal column set (every business table)
+## Conjunto de columnas universal (toda tabla de negocio)
 
-| Column | Type | Notes |
+| Columna | Tipo | Notas |
 |---|---|---|
-| `id` | `BIGSERIAL PRIMARY KEY` | `$table->id()` |
-| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | |
-| `updated_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | |
-| `deleted_at` | `TIMESTAMPTZ NULL` | soft delete |
-| `created_by` | `BIGINT NULL REFERENCES users(id)` | set by `HasAuditFields` trait |
-| `updated_by` | `BIGINT NULL REFERENCES users(id)` | set by `HasAuditFields` trait |
-| `row_version` | `INTEGER NOT NULL DEFAULT 1` | optimistic lock — only on core documents |
+| `id` | `BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY` | `$tabla->id()` |
+| `created_at` / `updated_at` | `TIMESTAMP NULL` | nombre de Laravel, igual que en v1 |
+| `deleted_at` | `TIMESTAMP NULL` | borrado logico |
+| `creado_por` | `BIGINT NULL -> users(id)` | lo llena el trait `TieneCamposAuditoria` |
+| `actualizado_por` | `BIGINT NULL -> users(id)` | lo llena el trait `TieneCamposAuditoria` |
+| `version_fila` | `INT NOT NULL DEFAULT 1` | bloqueo optimista, solo en documentos principales |
+
+Se usa `EsquemaErp::auditoria($tabla)` para las cinco primeras y
+`EsquemaErp::versionFila($tabla)` para la ultima. Tres clases de tabla quedan
+fuera de la regla, y la prueba `EsquemaTest` conoce la lista: las del framework
+o pivote, las de solo insercion (que llevan su propio actor: `aplicado_por`,
+`subido_por`, `autor_id`) y las tablas hijas, que heredan la auditoria del padre.
 
 ## Rules
 
 1. **Normalization:** 3NF. No duplicate master data; relationships via FKs. Lookup/catalog tables for enums that carry extra attributes; simple fixed enumerations become `CHECK` constraints.
 2. **FKS:** every FK `ON DELETE` explicitly chosen — `RESTRICT` for protected history, `CASCADE` for ownership composition, `SET NULL` for optional references (e.g. user).
-3. **Constraints:** `CHECK` for value ranges and cross-field rules (e.g. a journal line cannot be both debit and credit; `fecha_fin >= fecha_inicio`). `UNIQUE` on natural keys. Partial unique indexes `WHERE deleted_at IS NULL` so soft-deleted rows don't block re-creating a code/email.
+3. **Constraints:** `CHECK` for value ranges and cross-field rules (`EsquemaErp::check()`). `UNIQUE` on natural keys. Para que una fila con borrado logico no bloquee reutilizar un codigo o un correo se usa `EsquemaErp::unicoActivo()`: MariaDB no tiene indices parciales, asi que el equivalente es una columna generada virtual `<columna>_activo` que vale NULL en las filas borradas — y dos NULL nunca chocan en un indice unico — con el indice unico encima. La prueba `EsquemaTest` verifica ese comportamiento de punta a punta.
+   > Cuidado con una restriccion real de MariaDB: una columna que participa en una llave foranea `ON DELETE SET NULL` **no puede** aparecer en un `CHECK`. Cuando choquen, la regla se aplica en el Service (asi ocurre con "un prospecto convertido debe apuntar a un cliente").
 4. **Money:** `NUMERIC(18,2)`; rates `NUMERIC(18,6)`; stock quantities `NUMERIC(18,6)` unless integer pieces. Never `DOUBLE PRECISION` for money.
 5. **Document numbering:** never auto-increment visible numbers. Use `document_sequences` (prefix + zero-padded counter) incremented atomically in an Observer.
 6. **Soft delete:** only for master data and cancellable documents. Posted financial records are never deleted — they are voided/cancelled with a reversing entry.

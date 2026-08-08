@@ -37,6 +37,21 @@
             @if($canReports)<a class="nav-link {{ request()->routeIs('reportes.*') ? 'active' : '' }}" href="{{ route('reportes.index') }}"><i class="bi bi-bar-chart"></i> Reportes</a>@endif
             @if($role === 'Administrador')<a class="nav-link {{ request()->routeIs('usuarios.*') ? 'active' : '' }}" href="{{ route('usuarios.index') }}"><i class="bi bi-person-gear"></i> Usuarios</a>@endif
         </nav>
+
+        {{-- Cada modulo registra sus propias entradas en RegistroMenu; este bloque
+             no se toca al agregar un modulo. Ver PLANNING - Dashboard Philosophy. --}}
+        @php($menuModulos = \App\Modules\Compartido\Support\RegistroMenu::visiblesPara(auth()->user()))
+        @if(count($menuModulos))
+            <div class="sidebar-section">Modulos ERP</div>
+            <nav class="nav flex-column pb-3">
+                @foreach($menuModulos as $entrada)
+                    <a class="nav-link {{ request()->routeIs(\Illuminate\Support\Str::before($entrada['ruta'], '.').'.*') ? 'active' : '' }}"
+                       href="{{ route($entrada['ruta']) }}">
+                        <i class="bi bi-{{ $entrada['icono'] }}"></i> {{ $entrada['etiqueta'] }}
+                    </a>
+                @endforeach
+            </nav>
+        @endif
     </aside>
 
     <main class="main-content">

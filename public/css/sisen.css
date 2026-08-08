@@ -57,6 +57,18 @@ body {
     background: rgba(255,255,255,.12);
     color: #fff;
 }
+.sidebar-section {
+    color: rgba(255,255,255,.45);
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .35rem 1.7rem;
+    margin-top: .35rem;
+    border-top: 1px solid rgba(255,255,255,.12);
+    padding-top: .9rem;
+}
+.sidebar { overflow-y: auto; }
 .main-content {
     margin-left: 280px;
     width: calc(100% - 280px);
