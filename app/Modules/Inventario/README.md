@@ -40,11 +40,23 @@ consultan estas vistas; jamas se guarda una copia desnormalizada.
 
 - `v_existencias`
 
-## Servicios esperados
+## Servicios (implementados)
 
-- **ServicioMovimientoInventario** - el unico que escribe en el libro de movimientos
+- **ServicioMovimientoInventario** - el UNICO que escribe en el libro de movimientos
+- **ServicioExistencias** - deriva existencia fisica, apartada y disponible
 - **ServicioApartarExistencia** - lo consume Ventas al confirmar un pedido
 - **ServicioAjusteInventario / ServicioTraspaso / ServicioConteo**
+
+## Comandos
+
+- `inventario:reorden` - compara existencias contra `reglas_reorden` y notifica.
+  Programado a diario en `routes/console.php`.
+
+> **Sobre `v_existencias`:** su columna `existencia` es la existencia
+> DISPONIBLE, porque los apartados viven en el mismo libro con signo negativo.
+> Por eso se graban con `costo_unitario = 0` y `valor_inventario` sigue siendo
+> correcto. El desglose de las tres cifras lo da `ServicioExistencias`.
+> Ver `docs/IMPLEMENTACION_ERP.md` D-A.
 
 ## Estructura
 

@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Modules\Compartido\Contracts\Contabilizador;
+use App\Modules\Compartido\Services\ContabilizadorPendiente;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -13,7 +15,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Ventas y Compras contabilizan a traves de este contrato. Mientras
+        // Finanzas no publique su ServicioContabilizarPoliza, la implementacion
+        // de contingencia solo deja constancia en la bitacora; el dia que exista
+        // se cambia este binding y ningun modulo mas se toca.
+        $this->app->singleton(Contabilizador::class, ContabilizadorPendiente::class);
     }
 
     /**

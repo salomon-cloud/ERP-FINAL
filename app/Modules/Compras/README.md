@@ -29,10 +29,18 @@ directo ni con un modelo duplicado.
 - `devolucion_compra_lineas`
 - `pagos`
 
-## Servicios esperados
+## Servicios (implementados)
 
+- **ServicioRequisicion** - enviar, aprobar/rechazar, convertir en orden
+- **ServicioOrdenCompra** - confirmar con bloqueo optimista, enviar, cancelar
 - **ServicioRecepcion** - aplica la entrada al inventario y actualiza lo recibido
 - **ServicioFacturaProveedor** - cotejo de tres vias y contabilizacion de CxP
+- **ServicioDevolucionCompra** - saca la mercancia devuelta del almacen
+- **ServicioPago** - aplica pagos totales o parciales
+
+> Compras NO escribe en `movimientos_inventario`: se lo pide a los servicios de
+> Inventario. La contabilizacion pasa por el contrato `Contabilizador` de
+> Compartido mientras Finanzas publica el suyo -- ver `docs/IMPLEMENTACION_ERP.md` D-C.
 
 ## Estructura
 

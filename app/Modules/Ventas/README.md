@@ -37,11 +37,18 @@ consultan estas vistas; jamas se guarda una copia desnormalizada.
 - `v_historial_cliente`
 - `v_embudo_por_responsable`
 
-## Servicios esperados
+## Servicios (implementados)
 
-- **ServicioResolverPrecio** - lista del cliente -> lista general -> precio del producto
-- **ServicioEmitirFactura** - emite la factura y la contabiliza en Finanzas
-- **ServicioAplicarCobro** - aplica el cobro a una o varias facturas
+- **ServicioResolverPrecio** - lista del cliente -> lista predeterminada -> precio del producto
+- **ServicioCotizacion** - enviar, aceptar/rechazar, convertir en pedido
+- **ServicioPedido** - confirmar (aparta existencia) y surtir (la saca del almacen)
+- **ServicioFactura** - crea desde pedido, emite y contabiliza
+- **ServicioCobro** - aplica cobros totales o parciales
+- **ServicioNotaCredito** - acredita y, si el motivo es devolucion, regresa mercancia
+
+> Ventas NO escribe en `movimientos_inventario`: se lo pide a los servicios de
+> Inventario, que son sus duenos. Ver `docs/IMPLEMENTACION_ERP.md` D-B para el
+> orden en que se liberan apartados al surtir.
 
 ## Estructura
 

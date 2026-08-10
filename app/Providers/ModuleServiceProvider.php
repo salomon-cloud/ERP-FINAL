@@ -31,6 +31,7 @@ class ModuleServiceProvider extends ServiceProvider
             $this->registrarVistas($modulo, $ruta);
             $this->registrarMigraciones($ruta);
             $this->registrarRutas($modulo, $ruta);
+            $this->registrarComandos($modulo, $ruta);
             $this->registrarMenu($modulo);
         }
     }
@@ -93,6 +94,40 @@ class ModuleServiceProvider extends ServiceProvider
 
         if (is_dir($migraciones)) {
             $this->loadMigrationsFrom($migraciones);
+        }
+    }
+
+    /**
+     * Los comandos de consola del modulo (Console/*.php).
+     *
+     * Laravel solo descubre solo los de app/Console/Commands, que esta fuera de
+     * los modulos. Sin esto, `inventario:reorden` no existiria para artisan y
+     * no se podria programar en routes/console.php.
+     */
+    private function registrarComandos(string $modulo, string $ruta): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        $carpeta = $ruta.'/Console';
+
+        if (! is_dir($carpeta)) {
+            return;
+        }
+
+        $comandos = [];
+
+        foreach (glob($carpeta.'/*.php') ?: [] as $archivo) {
+            $clase = "App\\Modules\\{$modulo}\\Console\\".basename($archivo, '.php');
+
+            if (class_exists($clase)) {
+                $comandos[] = $clase;
+            }
+        }
+
+        if ($comandos !== []) {
+            $this->commands($comandos);
         }
     }
 
