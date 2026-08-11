@@ -28,9 +28,33 @@ declare(strict_types=1);
 */
 
 use App\Modules\Compartido\Controllers\TableroModuloController;
+use App\Modules\Compartido\Support\RegistroMenu;
+use App\Modules\CRM\Controllers\ClienteController;
 use Illuminate\Support\Facades\Route;
 
 // Pagina de entrada provisional del modulo. Sustituyela por el TableroController
 // propio (Controllers/TableroController.php) conservando el nombre de ruta
 // "crm.dashboard": la barra lateral apunta ahi.
-Route::get('/', TableroModuloController::class)->name('dashboard');
+Route::get('/', TableroModuloController::class)
+    ->name('dashboard')
+    ->middleware('permission:ventas.clientes.ver');
+
+/*
+ * Entradas de la barra lateral. La banda del modulo CRM es la 60.
+ *
+ * CUIDADO: con `route:cache` este archivo no se carga y el modulo pierde estas
+ * entradas (conserva la del tablero, que registra el cascaron) -- docs/david.md P6.
+ */
+RegistroMenu::registrar('CRM', [
+    ['etiqueta' => 'Tablero', 'icono' => 'speedometer2', 'ruta' => 'crm.dashboard', 'privilegio' => 'ventas.clientes.ver', 'orden' => 60.01],
+    ['etiqueta' => 'Clientes', 'icono' => 'people', 'ruta' => 'crm.clientes.index', 'privilegio' => 'ventas.clientes.ver', 'orden' => 60.02],
+]);
+
+/*
+ * Clientes: el catalogo es de Ventas y aqui solo se lee. Se usa el privilegio de
+ * lectura del catalogo (ventas.clientes.ver) en vez de sembrar uno nuevo, porque
+ * CRM no es dueno del dato.
+ */
+Route::resource('clientes', ClienteController::class)
+    ->only(['index', 'show'])
+    ->middleware('permission:ventas.clientes.ver');
