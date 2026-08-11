@@ -59,6 +59,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ($empleados as $index => $empleado) {
+            $pagada = $index % 2 === 0;
             $nomina = [
                 'empleado_id' => $empleado->id,
                 'periodo_pago' => 'Primera quincena mayo 2026',
@@ -69,8 +70,14 @@ class DatabaseSeeder extends Seeder
                 'deducciones' => 250,
                 'isr' => 900 + ($index * 100),
                 'imss' => 450,
-                'estado' => $index % 2 === 0 ? 'pagada' : 'pendiente',
+                'metodo_pago' => $pagada ? 'transferencia' : null,
+                'created_by' => 1,
+                'estado' => $pagada ? 'pagada' : 'pendiente',
             ];
+            if ($pagada) {
+                $nomina['paid_by'] = 3;
+                $nomina['fecha_pago_real'] = '2026-05-16 10:30:00';
+            }
             $nomina['total_pagar'] = Nomina::calcularTotal($nomina);
             Nomina::create($nomina);
 

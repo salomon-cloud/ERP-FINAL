@@ -40,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::get('reportes/permisos', [ReporteController::class, 'permisos'])->name('reportes.permisos')->middleware('role:Administrador,Contador');
     Route::get('reportes/departamentos', [ReporteController::class, 'departamentos'])->name('reportes.departamentos')->middleware('role:Administrador,Contador');
     Route::get('reportes/pagos-pendientes', [ReporteController::class, 'pagosPendientes'])->name('reportes.pagos-pendientes')->middleware('role:Administrador,Contador');
+    Route::get('reportes/resumen-periodo', [ReporteController::class, 'resumenPeriodo'])->name('reportes.resumen-periodo')->middleware('role:Administrador,Contador');
+    Route::get('reportes/costo-departamento', [ReporteController::class, 'costoDepartamento'])->name('reportes.costo-departamento')->middleware('role:Administrador,Contador');
+    Route::get('reportes/comparativo', [ReporteController::class, 'comparativo'])->name('reportes.comparativo')->middleware('role:Administrador,Contador');
 
     Route::resource('usuarios', UsuarioController::class)->except('show')->middleware('role:Administrador');
 });
