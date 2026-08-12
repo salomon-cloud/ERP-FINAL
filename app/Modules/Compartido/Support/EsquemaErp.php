@@ -75,6 +75,78 @@ final class EsquemaErp
         ));
     }
 
+    public static function eliminarCheck(string $tabla, string $nombre): void
+    {
+        DB::statement(sprintf(
+            'ALTER TABLE %s DROP CHECK %s',
+            self::envolverTabla($tabla),
+            self::envolver($nombre)
+        ));
+    }
+
+    public static function eliminarCheckSiExiste(string $tabla, string $nombre): void
+    {
+        $existe = DB::selectOne(
+            'SELECT 1 FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND table_name = ? AND constraint_name = ? AND constraint_type = "CHECK" LIMIT 1',
+            [$tabla, $nombre]
+        );
+
+        if ($existe !== null) {
+            self::eliminarCheck($tabla, $nombre);
+        }
+    }
+
+    public static function eliminarIndiceSiExiste(string $tabla, string $nombre): void
+    {
+        $existe = DB::selectOne(
+            'SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ? LIMIT 1',
+            [$tabla, $nombre]
+        );
+
+        if ($existe !== null) {
+            try {
+                DB::statement(sprintf(
+                    'ALTER TABLE %s DROP INDEX %s',
+                    self::envolverTabla($tabla),
+                    self::envolver($nombre)
+                ));
+            } catch (\Throwable) {
+                // Si el indice aun respalda una llave foranea, el rollback
+                // sigue sin bloquearse.
+            }
+        }
+    }
+
+    public static function columnaExiste(string $tabla, string $columna): bool
+    {
+        return DB::selectOne(
+            'SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1',
+            [$tabla, $columna]
+        ) !== null;
+    }
+
+    public static function eliminarColumnaSiExiste(string $tabla, string $columna): void
+    {
+        if (self::columnaExiste($tabla, $columna)) {
+            DB::statement(sprintf(
+                'ALTER TABLE %s DROP COLUMN %s',
+                self::envolverTabla($tabla),
+                self::envolver($columna)
+            ));
+        }
+    }
+
+    public static function eliminarLlaveForaneaSiExiste(string $tabla, string $nombre): void
+    {
+        if (self::llaveForaneaExiste($tabla, $nombre)) {
+            DB::statement(sprintf(
+                'ALTER TABLE %s DROP FOREIGN KEY %s',
+                self::envolverTabla($tabla),
+                self::envolver($nombre)
+            ));
+        }
+    }
+
     /**
      * Indice unico que ignora los registros con borrado logico, para que un
      * codigo o un correo puedan reutilizarse despues de eliminar a su dueno
@@ -127,11 +199,21 @@ final class EsquemaErp
 
     public static function eliminarLlaveForaneaDiferida(string $tabla, string $nombre): void
     {
-        DB::statement(sprintf(
-            'ALTER TABLE %s DROP FOREIGN KEY %s',
-            self::envolverTabla($tabla),
-            self::envolver($nombre)
-        ));
+        if (self::llaveForaneaExiste($tabla, $nombre)) {
+            DB::statement(sprintf(
+                'ALTER TABLE %s DROP FOREIGN KEY %s',
+                self::envolverTabla($tabla),
+                self::envolver($nombre)
+            ));
+        }
+    }
+
+    private static function llaveForaneaExiste(string $tabla, string $nombre): bool
+    {
+        return DB::selectOne(
+            'SELECT 1 FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND table_name = ? AND constraint_name = ? AND constraint_type = "FOREIGN KEY" LIMIT 1',
+            [$tabla, $nombre]
+        ) !== null;
     }
 
     /**

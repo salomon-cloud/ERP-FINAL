@@ -89,14 +89,20 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('nominas', function (Blueprint $tabla) {
-            $tabla->dropIndex('idx_nominas_estado');
-            $tabla->dropConstrainedForeignId('corrida_id');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn(['horas_extra_cantidad', 'dias_ausencia', 'pagada_en', 'notas']);
-        });
+        EsquemaErp::eliminarCheckSiExiste('nominas', 'chk_nominas_montos');
+
+        EsquemaErp::eliminarIndiceSiExiste('nominas', 'idx_nominas_estado');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('nominas', 'nominas_corrida_id_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('nominas', 'nominas_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('nominas', 'nominas_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'corrida_id');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'horas_extra_cantidad');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'dias_ausencia');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'pagada_en');
+        EsquemaErp::eliminarColumnaSiExiste('nominas', 'notas');
 
         Schema::dropIfExists('nomina_corridas');
         Schema::dropIfExists('nomina_periodos');

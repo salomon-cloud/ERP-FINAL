@@ -81,40 +81,57 @@ return new class extends Migration
     {
         EsquemaErp::eliminarLlaveForaneaDiferida('departamentos', 'fk_departamentos_jefe');
 
-        Schema::table('empleados', function (Blueprint $tabla) {
-            $tabla->dropIndex('uq_empleados_numero');
-            $tabla->dropColumn('numero_empleado_activo');
-            $tabla->dropIndex('idx_empleados_estado');
-            $tabla->dropConstrainedForeignId('organizacion_id');
-            $tabla->dropConstrainedForeignId('jefe_id');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn([
-                'numero_empleado', 'genero', 'fecha_baja', 'motivo_baja', 'tipo_contrato',
-                'moneda', 'frecuencia_pago', 'nss', 'banco', 'cuenta_bancaria',
-            ]);
-        });
+        EsquemaErp::eliminarCheckSiExiste('empleados', 'chk_empleados_genero');
+        EsquemaErp::eliminarCheckSiExiste('empleados', 'chk_empleados_tipo_contrato');
+        EsquemaErp::eliminarCheckSiExiste('empleados', 'chk_empleados_frecuencia_pago');
+        EsquemaErp::eliminarCheckSiExiste('empleados', 'chk_empleados_fecha_baja');
+        EsquemaErp::eliminarCheckSiExiste('puestos', 'chk_puestos_rango_sueldo');
 
-        Schema::table('puestos', function (Blueprint $tabla) {
-            $tabla->dropIndex('uq_puestos_codigo');
-            $tabla->dropColumn('codigo_activo');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn('codigo');
-        });
+        EsquemaErp::eliminarIndiceSiExiste('empleados', 'uq_empleados_numero');
+        EsquemaErp::eliminarIndiceSiExiste('empleados', 'idx_empleados_estado');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('empleados', 'empleados_organizacion_id_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('empleados', 'empleados_jefe_id_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('empleados', 'empleados_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('empleados', 'empleados_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'organizacion_id');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'jefe_id');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'numero_empleado_activo');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'numero_empleado');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'genero');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'fecha_baja');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'motivo_baja');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'tipo_contrato');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'moneda');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'frecuencia_pago');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'nss');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'banco');
+        EsquemaErp::eliminarColumnaSiExiste('empleados', 'cuenta_bancaria');
 
-        Schema::table('departamentos', function (Blueprint $tabla) {
-            $tabla->dropIndex('uq_departamentos_codigo');
-            $tabla->dropColumn('codigo_activo');
-            $tabla->dropIndex('idx_departamentos_jefe');
-            $tabla->dropConstrainedForeignId('organizacion_id');
-            $tabla->dropConstrainedForeignId('padre_id');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn(['jefe_id', 'codigo']);
-        });
+        EsquemaErp::eliminarIndiceSiExiste('puestos', 'uq_puestos_codigo');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('puestos', 'puestos_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('puestos', 'puestos_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('puestos', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('puestos', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('puestos', 'codigo_activo');
+        EsquemaErp::eliminarColumnaSiExiste('puestos', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('puestos', 'codigo');
+
+        EsquemaErp::eliminarIndiceSiExiste('departamentos', 'uq_departamentos_codigo');
+        EsquemaErp::eliminarIndiceSiExiste('departamentos', 'idx_departamentos_jefe');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('departamentos', 'departamentos_organizacion_id_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('departamentos', 'departamentos_padre_id_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('departamentos', 'departamentos_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('departamentos', 'departamentos_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'organizacion_id');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'padre_id');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'codigo_activo');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'jefe_id');
+        EsquemaErp::eliminarColumnaSiExiste('departamentos', 'codigo');
     }
 };

@@ -57,25 +57,31 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('permisos', function (Blueprint $tabla) {
-            $tabla->dropIndex('idx_permisos_empleado');
-            $tabla->dropIndex('idx_permisos_estado');
-            $tabla->dropConstrainedForeignId('revisado_por');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn(['dias', 'con_goce', 'revisado_en', 'comentario_revision']);
-        });
+        EsquemaErp::eliminarIndiceSiExiste('permisos', 'idx_permisos_empleado');
+        EsquemaErp::eliminarIndiceSiExiste('permisos', 'idx_permisos_estado');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('permisos', 'permisos_revisado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('permisos', 'permisos_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('permisos', 'permisos_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'revisado_por');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'dias');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'con_goce');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'revisado_en');
+        EsquemaErp::eliminarColumnaSiExiste('permisos', 'comentario_revision');
 
-        Schema::table('asistencias', function (Blueprint $tabla) {
-            $tabla->dropUnique('uq_asistencias_empleado_fecha');
-            $tabla->dropIndex('idx_asistencias_fecha');
-            $tabla->dropIndex('idx_asistencias_estado');
-            $tabla->dropConstrainedForeignId('verificado_por');
-            $tabla->dropConstrainedForeignId('creado_por');
-            $tabla->dropConstrainedForeignId('actualizado_por');
-            $tabla->dropSoftDeletes();
-            $tabla->dropColumn(['horas_trabajadas', 'notas']);
-        });
+        EsquemaErp::eliminarIndiceSiExiste('asistencias', 'uq_asistencias_empleado_fecha');
+        EsquemaErp::eliminarIndiceSiExiste('asistencias', 'idx_asistencias_fecha');
+        EsquemaErp::eliminarIndiceSiExiste('asistencias', 'idx_asistencias_estado');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('asistencias', 'asistencias_verificado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('asistencias', 'asistencias_creado_por_foreign');
+        EsquemaErp::eliminarLlaveForaneaSiExiste('asistencias', 'asistencias_actualizado_por_foreign');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'verificado_por');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'creado_por');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'actualizado_por');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'deleted_at');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'horas_trabajadas');
+        EsquemaErp::eliminarColumnaSiExiste('asistencias', 'notas');
     }
 };

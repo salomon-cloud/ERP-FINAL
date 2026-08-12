@@ -35,10 +35,11 @@ final class ExportadorCsv
             $salida = fopen('php://output', 'wb');
 
             fwrite($salida, "\xEF\xBB\xBF");
-            fputcsv($salida, $encabezados);
+            fwrite($salida, "sep=;\r\n");
+            fputcsv($salida, $encabezados, ';');
 
             foreach ($filas as $fila) {
-                fputcsv($salida, $fila);
+                fputcsv($salida, $fila, ';');
             }
 
             fclose($salida);

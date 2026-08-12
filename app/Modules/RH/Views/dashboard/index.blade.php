@@ -32,17 +32,17 @@
     </div>
 
     <x-card class="mb-3">
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-primary" href="{{ route('rh.asistencias.create') }}">
+        <div class="d-flex flex-wrap gap-2 dashboard-shortcuts">
+            <a class="btn btn-outline-primary btn-sm" href="{{ route('rh.asistencias.create') }}">
                 <i class="bi bi-calendar-check me-1"></i>Registrar asistencia
             </a>
-            <a class="btn btn-outline-primary" href="{{ route('rh.permisos.create') }}">
+            <a class="btn btn-outline-primary btn-sm" href="{{ route('rh.permisos.create') }}">
                 <i class="bi bi-calendar2-plus me-1"></i>Nueva solicitud
             </a>
-            <a class="btn btn-outline-primary" href="{{ route('rh.nomina-corridas.create') }}">
+            <a class="btn btn-outline-primary btn-sm" href="{{ route('rh.nomina-corridas.create') }}">
                 <i class="bi bi-cash-stack me-1"></i>Nueva corrida de nomina
             </a>
-            <a class="btn btn-outline-primary" href="{{ route('rh.organigrama') }}">
+            <a class="btn btn-outline-primary btn-sm" href="{{ route('rh.organigrama') }}">
                 <i class="bi bi-diagram-3 me-1"></i>Ver organigrama
             </a>
         </div>

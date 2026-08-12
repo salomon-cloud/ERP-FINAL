@@ -60,44 +60,34 @@ class ReporteTest extends TestCase
             ->assertOk()->assertSee('05-2026')->assertDontSee('06-2026');
     }
 
-    public function test_export_csv_nominas(): void
+    public function test_export_excel_nominas(): void
     {
         $this->setupDatos();
         $contador = $this->setupContador();
 
         $response = $this->actingAs($contador)->get('/reportes/nominas?exportar=1');
         $response->assertOk();
-        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
-        $this->assertStringContainsString("\xEF\xBB\xBF", $response->getContent());
-        $this->assertStringContainsString('Test Demo', $response->getContent());
+        $response->assertDownload('reporte-nominas.xlsx');
+        $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
-    public function test_export_csv_pagos_pendientes(): void
+    public function test_export_excel_pagos_pendientes(): void
     {
         $this->setupDatos();
         $contador = $this->setupContador();
 
         $response = $this->actingAs($contador)->get('/reportes/pagos-pendientes?exportar=1');
         $response->assertOk();
-        $this->assertStringContainsString('Q2 2026', $response->getContent());
-        $this->assertStringNotContainsString('Q1 2026', $response->getContent());
+        $response->assertDownload('pagos-pendientes.xlsx');
     }
 
-    public function test_export_csv_resumen_y_costo(): void
+    public function test_export_excel_resumen_costo_comparativo(): void
     {
         $this->setupDatos();
         $contador = $this->setupContador();
 
-        $resumen = $this->actingAs($contador)->get('/reportes/resumen-periodo?exportar=1');
-        $resumen->assertOk();
-        $this->assertStringContainsString('05-2026', $resumen->getContent());
-
-        $costo = $this->actingAs($contador)->get('/reportes/costo-departamento?exportar=1');
-        $costo->assertOk();
-        $this->assertStringContainsString('Finanzas', $costo->getContent());
-
-        $comp = $this->actingAs($contador)->get('/reportes/comparativo?anio=2026&exportar=1');
-        $comp->assertOk();
-        $this->assertStringContainsString('05-2026', $comp->getContent());
+        $this->actingAs($contador)->get('/reportes/resumen-periodo?exportar=1')->assertOk()->assertDownload('resumen-periodo.xlsx');
+        $this->actingAs($contador)->get('/reportes/costo-departamento?exportar=1')->assertOk()->assertDownload('costo-departamento.xlsx');
+        $this->actingAs($contador)->get('/reportes/comparativo?anio=2026&exportar=1')->assertOk()->assertDownload('comparativo-2026.xlsx');
     }
 }

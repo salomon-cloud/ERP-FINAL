@@ -7,10 +7,14 @@ use App\Models\Departamento;
 use App\Models\Empleado;
 use App\Models\Nomina;
 use App\Models\Permiso;
+use App\Services\ReporteExcelService;
 use Illuminate\Http\Request;
 
 class ReporteController extends Controller
 {
+    public function __construct(private readonly ReporteExcelService $excel)
+    {
+    }
     public function index()
     {
         return view('reportes.index');
@@ -44,15 +48,25 @@ class ReporteController extends Controller
         $items = $query->latest()->paginate(15)->withQueryString();
 
         if ($request->boolean('exportar')) {
-            $rows = $query->get()->map(fn ($n) => [
+            $filtros = trim(implode(' / ', array_filter([
+                $request->empleado_id ? 'Empleado: '.Empleado::find($request->empleado_id)?->nombre_completo : null,
+                $request->estado ? 'Estado: '.$request->estado : null,
+                $request->desde ? 'Desde: '.$request->desde : null,
+                $request->hasta ? 'Hasta: '.$request->hasta : null,
+            ])));
+
+            $filas = $query->get()->map(fn ($n) => [
                 $n->empleado->nombre_completo, $n->periodo_pago, $n->fecha_pago->format('d/m/Y'),
-                $n->sueldo_base, $n->bonos, $n->horas_extra, $n->deducciones, $n->isr, $n->imss,
-                $n->total_pagar, $n->estado, $n->metodo_pago_label,
+                (float) $n->sueldo_base, (float) $n->bonos, (float) $n->horas_extra, (float) $n->deducciones,
+                (float) $n->isr, (float) $n->imss, (float) $n->total_pagar, ucfirst($n->estado), $n->metodo_pago_label,
             ]);
 
-            return $this->downloadCsv('reporte-nominas.csv', [
+            return $this->excel->download('reporte-nominas.xlsx', 'Reporte de nominas', [
                 'Empleado', 'Periodo', 'Fecha', 'Sueldo base', 'Bonos', 'Horas extra', 'Deducciones', 'ISR', 'IMSS', 'Total', 'Estado', 'Metodo',
-            ], $rows);
+            ], $filas, [3, 4, 5, 6, 7, 8, 9], [
+                0 => 'TOTALES', 3 => $totales['sueldo_base'], 4 => $totales['bonos'], 5 => $totales['horas_extra'],
+                6 => $totales['deducciones'], 7 => $totales['isr'], 8 => $totales['imss'], 9 => $totales['total_pagar'],
+            ], $filtros ?: null);
         }
 
         return view('reportes.nominas', ['items' => $items, 'empleados' => Empleado::all(), 'totales' => $totales]);
@@ -95,12 +109,14 @@ class ReporteController extends Controller
         $items = $query->latest()->paginate(15)->withQueryString();
 
         if ($request->boolean('exportar')) {
-            $rows = $query->get()->map(fn ($n) => [
+            $filas = $query->get()->map(fn ($n) => [
                 $n->empleado->nombre_completo, $n->periodo_pago, $n->fecha_pago->format('d/m/Y'),
-                $n->total_pagar, $n->metodo_pago_label,
+                (float) $n->total_pagar, $n->metodo_pago_label,
             ]);
 
-            return $this->downloadCsv('pagos-pendientes.csv', ['Empleado', 'Periodo', 'Fecha', 'Total', 'Metodo'], $rows);
+            return $this->excel->download('pagos-pendientes.xlsx', 'Reporte de pagos pendientes', [
+                'Empleado', 'Periodo', 'Fecha', 'Total', 'Metodo',
+            ], $filas, [3], [0 => 'TOTAL PENDIENTE', 3 => (float) $totalPagar]);
         }
 
         return view('reportes.pagos-pendientes', ['items' => $items, 'empleados' => Empleado::all(), 'total_pagar' => $totalPagar]);
@@ -138,14 +154,27 @@ class ReporteController extends Controller
         $periodos = $resumen->map(fn ($r) => ['periodo' => $r->periodo, 'etiqueta' => $r->etiqueta]);
 
         if ($request->boolean('exportar')) {
-            $rows = $resumen->map(fn ($r) => [
-                $r->etiqueta, $r->total_nominas, $r->sueldo_base, $r->bonos + $r->horas_extra,
-                $r->deducciones + $r->isr + $r->imss, $r->total_pagar, $r->pagado, $r->pendiente,
+            $totalizado = array_reduce($resumen->values()->all(), function ($acc, $r) {
+                foreach ($acc as $k => $v) {
+                    $acc[$k] += (float) $r->$k;
+                }
+
+                return $acc;
+            }, ['total_nominas' => 0, 'sueldo_base' => 0, 'bonos' => 0, 'horas_extra' => 0, 'deducciones' => 0, 'isr' => 0, 'imss' => 0, 'total_pagar' => 0, 'pagado' => 0, 'pendiente' => 0]);
+
+            $filas = $resumen->map(fn ($r) => [
+                $r->etiqueta, $r->total_nominas, (float) $r->sueldo_base, (float) ($r->bonos + $r->horas_extra),
+                (float) ($r->deducciones + $r->isr + $r->imss), (float) $r->total_pagar, (float) $r->pagado, (float) $r->pendiente,
             ])->values();
 
-            return $this->downloadCsv('resumen-periodo.csv', [
+            return $this->excel->download('resumen-periodo.xlsx', 'Resumen financiero por periodo', [
                 'Periodo', 'Nominas', 'Sueldo', 'Bonos + H.extra', 'Deducciones + ISR + IMSS', 'Total', 'Pagado', 'Pendiente',
-            ], $rows);
+            ], $filas, [2, 3, 4, 5, 6, 7], [
+                0 => 'TOTALES', 1 => $totalizado['total_nominas'],
+                2 => $totalizado['sueldo_base'], 3 => $totalizado['bonos'] + $totalizado['horas_extra'],
+                4 => $totalizado['deducciones'] + $totalizado['isr'] + $totalizado['imss'],
+                5 => $totalizado['total_pagar'], 6 => $totalizado['pagado'], 7 => $totalizado['pendiente'],
+            ], $request->empleado_id ? 'Empleado: '.Empleado::find($request->empleado_id)?->nombre_completo : null);
         }
 
         return view('reportes.resumen-periodo', ['items' => $resumen, 'periodos' => $periodos, 'empleados' => Empleado::all()]);
@@ -179,13 +208,16 @@ class ReporteController extends Controller
             ->map(fn ($grupo, $periodo) => ['periodo' => $periodo, 'etiqueta' => $grupo->first()->fecha_pago->format('m-Y')]);
 
         if ($request->boolean('exportar')) {
-            $rows = $items->map(fn ($d) => [
-                $d->nombre, $d->responsable, $d->empleados, $d->sueldo_base, $d->total_pagar, $d->pagado, $d->pendiente,
+            $filas = $items->map(fn ($d) => [
+                $d->nombre, $d->responsable, $d->empleados, (float) $d->sueldo_base,
+                (float) $d->total_pagar, (float) $d->pagado, (float) $d->pendiente,
             ])->values();
 
-            return $this->downloadCsv('costo-departamento.csv', [
+            return $this->excel->download('costo-departamento.xlsx', 'Costo de nomina por departamento', [
                 'Departamento', 'Responsable', 'Empleados', 'Sueldo base', 'Total nomina', 'Pagado', 'Pendiente',
-            ], $rows);
+            ], $filas, [3, 4, 5, 6], [
+                0 => 'GRAN TOTAL', 3 => (float) $granTotal->sueldo_base, 4 => (float) $granTotal->total_pagar,
+            ], $request->periodo ? 'Periodo: '.substr($request->periodo, 3).'-'.substr($request->periodo, 0, 4) : null);
         }
 
         return view('reportes.costo-departamento', ['items' => $items, 'periodos' => $periodos, 'gran_total' => $granTotal]);
@@ -225,41 +257,17 @@ class ReporteController extends Controller
         }
 
         if ($request->boolean('exportar')) {
-            $rows = $items->map(fn ($r) => [
-                $r->etiqueta, $r->total_nominas, $r->pagado, $r->pendiente, $r->total_pagar, $r->acumulado,
-                $r->variacion !== null ? number_format($r->variacion, 1) : '',
+            $filas = $items->map(fn ($r) => [
+                $r->etiqueta, $r->total_nominas, (float) $r->pagado, (float) $r->pendiente,
+                (float) $r->total_pagar, (float) $r->acumulado,
+                $r->variacion !== null ? number_format($r->variacion, 1).' %' : '',
             ])->values();
 
-            return $this->downloadCsv('comparativo-'.$anio.'.csv', [
+            return $this->excel->download('comparativo-'.$anio.'.xlsx', "Comparativo financiero por mes ({$anio})", [
                 'Mes', 'Nominas', 'Pagado', 'Pendiente', 'Total del mes', 'Acumulado', 'Variacion %',
-            ], $rows);
+            ], $filas, [2, 3, 4, 5]);
         }
 
         return view('reportes.comparativo', ['items' => $items, 'anio' => $anio, 'anios' => $anios]);
-    }
-
-    protected function downloadCsv(string $filename, array $headers, $rows)
-    {
-        $content = "\xEF\xBB\xBF".implode(';', $headers)."\n";
-
-        foreach ($rows as $row) {
-            $content .= implode(';', array_map(fn ($value) => $this->csvField($value), $row))."\n";
-        }
-
-        return response($content, 200, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-            'Cache-Control' => 'no-store',
-        ]);
-    }
-
-    protected function csvField($value): string
-    {
-        $value = (string) ($value ?? '');
-        if (str_contains($value, ';') || str_contains($value, '"') || str_contains($value, "\n")) {
-            return '"'.str_replace('"', '""', $value).'"';
-        }
-
-        return $value;
     }
 }
