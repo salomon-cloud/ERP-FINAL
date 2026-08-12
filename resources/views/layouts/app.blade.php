@@ -32,6 +32,12 @@
             @if($canCatalogs)<a class="nav-link {{ request()->routeIs('departamentos.*') ? 'active' : '' }}" href="{{ route('departamentos.index') }}"><i class="bi bi-building"></i> Departamentos</a>@endif
             @if($canCatalogs)<a class="nav-link {{ request()->routeIs('puestos.*') ? 'active' : '' }}" href="{{ route('puestos.index') }}"><i class="bi bi-briefcase"></i> Puestos</a>@endif
             @if($canPayroll)<a class="nav-link {{ request()->routeIs('nominas.*') ? 'active' : '' }}" href="{{ route('nominas.index') }}"><i class="bi bi-cash-stack"></i> Nominas</a>@endif
+            @if($canReports)
+                <div class="nav-section">Finanzas</div>
+                <a class="nav-link {{ request()->routeIs('reportes.resumen-periodo') ? 'active' : '' }}" href="{{ route('reportes.resumen-periodo') }}"><i class="bi bi-calendar3"></i> Resumen por periodo</a>
+                <a class="nav-link {{ request()->routeIs('reportes.costo-departamento') ? 'active' : '' }}" href="{{ route('reportes.costo-departamento') }}"><i class="bi bi-diagram-3"></i> Costo por departamento</a>
+                <a class="nav-link {{ request()->routeIs('reportes.comparativo') ? 'active' : '' }}" href="{{ route('reportes.comparativo') }}"><i class="bi bi-graph-up"></i> Comparativo mensual</a>
+            @endif
             @if($canRH)<a class="nav-link {{ request()->routeIs('asistencias.*') ? 'active' : '' }}" href="{{ route('asistencias.index') }}"><i class="bi bi-calendar-check"></i> Asistencias</a>@endif
             @if($canRH)<a class="nav-link {{ request()->routeIs('permisos.*') ? 'active' : '' }}" href="{{ route('permisos.index') }}"><i class="bi bi-calendar2-week"></i> Permisos y vacaciones</a>@endif
             @if($canReports)<a class="nav-link {{ request()->routeIs('reportes.*') ? 'active' : '' }}" href="{{ route('reportes.index') }}"><i class="bi bi-bar-chart"></i> Reportes</a>@endif
