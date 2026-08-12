@@ -28,14 +28,15 @@ use App\Modules\RH\Models\NominaCorrida;
 use App\Modules\RH\Models\NominaPeriodo;
 use App\Modules\RH\Models\Permiso;
 use App\Modules\RH\Models\Puesto;
+use App\Modules\RH\Observers\ObservadorAsistencia;
+use App\Modules\RH\Observers\ObservadorNomina;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class RhDemoSeeder extends Seeder
 {
     private const NOMBRE_RRHH = 'Recursos Humanos';
     private const FECHA_CONTRATACION = '2024-01-15';
-    private const FECHA_BAJA_DEMO = '2026-05-15';
+    private const FECHA_FIN_PERIODO_DEMO = '2026-05-15';
     private const FECHA_PAGO_DEMO = '2026-05-15';
     private const FECHA_FIRMADO_DEMO = '2024-01-15 09:00:00';
     private const FECHA_APLICADA_DEMO = '2026-05-15 12:00:00';
@@ -57,6 +58,7 @@ class RhDemoSeeder extends Seeder
 
         $this->sembrarContratos($empleados);
         $this->sembrarNominas($empleados, $corridas);
+        $this->cuadrarCorridas($corridas);
         $this->sembrarAsistencias($empleados, $usuarios);
         $this->sembrarPermisos($empleados, $usuarios);
         $this->sembrarDocumentos($empleados);
@@ -65,30 +67,18 @@ class RhDemoSeeder extends Seeder
         $this->command?->info('Datos demo de RH sembrados.');
     }
 
-    /** @return array<string, User> */
+    /**
+     * Los usuarios los define UsuariosDemoSeeder, que ademas les asigna el rol
+     * normalizado. Aqui solo se piden: declararlos otra vez seria una segunda
+     * definicion de admin@sisen.com que puede contradecir a la primera.
+     *
+     * @return array<string, User>
+     */
     private function sembrarUsuarios(): array
     {
-        $usuarios = [
-            'admin@sisen.com' => ['name' => 'Administrador SISEN', 'role' => 'Administrador'],
-            'rh@sisen.com' => ['name' => self::NOMBRE_RRHH, 'role' => self::NOMBRE_RRHH],
-            'contador@sisen.com' => ['name' => 'Contador', 'role' => 'Contador'],
-            'empleado@sisen.com' => ['name' => 'Empleado Demo', 'role' => 'Empleado'],
-        ];
+        $this->call(UsuariosDemoSeeder::class);
 
-        $mapa = [];
-
-        foreach ($usuarios as $email => $datos) {
-            $mapa[$email] = User::updateOrCreate(
-                ['email' => $email],
-                $datos + [
-                    'password' => Hash::make('password'),
-                    'estado' => 'activo',
-                    'debe_cambiar_password' => false,
-                ]
-            );
-        }
-
-        return $mapa;
+        return UsuariosDemoSeeder::mapa();
     }
 
     /** @return array<string, Departamento> */
@@ -104,18 +94,22 @@ class RhDemoSeeder extends Seeder
         $mapa = [];
 
         foreach ($definidos as $clave => $datos) {
+            // Se busca por `codigo`, que es la columna con indice unico
+            // (uq_departamentos_codigo). Buscar por `nombre` -- que no es unico
+            // -- dejaria crear un segundo departamento con el mismo codigo y el
+            // alta reventaria contra el indice.
             $mapa[$clave] = Departamento::updateOrCreate(
-                ['nombre' => $datos['nombre']],
+                ['codigo' => $datos['codigo']],
                 [
-                    'codigo' => $datos['codigo'],
+                    'nombre' => $datos['nombre'],
                     'descripcion' => $datos['descripcion'],
                     'responsable' => $datos['responsable'],
                     'estado' => EstadoActivacion::Activo->value,
                     'organizacion_id' => null,
                     'padre_id' => null,
                     'jefe_id' => null,
-                    'creado_por' => $usuarios['admin@sisen.com']->id,
-                    'actualizado_por' => $usuarios['admin@sisen.com']->id,
+                    'creado_por' => $usuarios[UsuariosDemoSeeder::ADMIN]->id,
+                    'actualizado_por' => $usuarios[UsuariosDemoSeeder::ADMIN]->id,
                 ]
             );
         }
@@ -136,14 +130,11 @@ class RhDemoSeeder extends Seeder
         $mapa = [];
 
         foreach ($puestos as $clave => $datos) {
+            // `puestos` cuelga del departamento, no de la organizacion: no
+            // tiene columna organizacion_id (ver migracion 400100).
             $mapa[$clave] = Puesto::updateOrCreate(
                 ['codigo' => $datos['codigo']],
-                $datos + [
-                    'estado' => EstadoActivacion::Activo->value,
-                    'organizacion_id' => null,
-                    'creado_por' => null,
-                    'actualizado_por' => null,
-                ]
+                $datos + ['estado' => EstadoActivacion::Activo->value]
             );
         }
 
@@ -165,7 +156,7 @@ class RhDemoSeeder extends Seeder
                 'telefono' => '5551001001',
                 'departamento_id' => $departamentos['RH']->id,
                 'puesto_id' => $puestos['RH']->id,
-                'user_id' => $usuarios['rh@sisen.com']->id,
+                'user_id' => $usuarios[UsuariosDemoSeeder::RH]->id,
                 'sueldo_base' => 26000,
             ],
             'CAR' => [
@@ -179,7 +170,7 @@ class RhDemoSeeder extends Seeder
                 'telefono' => '5551001002',
                 'departamento_id' => $departamentos['FIN']->id,
                 'puesto_id' => $puestos['FIN']->id,
-                'user_id' => $usuarios['contador@sisen.com']->id,
+                'user_id' => $usuarios[UsuariosDemoSeeder::CONTADOR]->id,
                 'sueldo_base' => 32000,
             ],
             'MIR' => [
@@ -207,7 +198,7 @@ class RhDemoSeeder extends Seeder
                 'telefono' => '5551001004',
                 'departamento_id' => $departamentos['TEC']->id,
                 'puesto_id' => $puestos['TEC']->id,
-                'user_id' => $usuarios['empleado@sisen.com']->id,
+                'user_id' => $usuarios[UsuariosDemoSeeder::EMPLEADO]->id,
                 'sueldo_base' => 38000,
             ],
         ];
@@ -248,9 +239,9 @@ class RhDemoSeeder extends Seeder
             );
         }
 
-        User::where('email', 'rh@sisen.com')->update(['empleado_id' => $mapa['LAU']->id]);
-        User::where('email', 'contador@sisen.com')->update(['empleado_id' => $mapa['CAR']->id]);
-        User::where('email', 'empleado@sisen.com')->update(['empleado_id' => $mapa['AND']->id]);
+        User::where('email', UsuariosDemoSeeder::RH)->update(['empleado_id' => $mapa['LAU']->id]);
+        User::where('email', UsuariosDemoSeeder::CONTADOR)->update(['empleado_id' => $mapa['CAR']->id]);
+        User::where('email', UsuariosDemoSeeder::EMPLEADO)->update(['empleado_id' => $mapa['AND']->id]);
 
         return $mapa;
     }
@@ -262,7 +253,7 @@ class RhDemoSeeder extends Seeder
             '2026-05' => [
                 'codigo_periodo' => '2026-05',
                 'fecha_inicio' => '2026-05-01',
-                    'fecha_fin' => self::FECHA_BAJA_DEMO,
+                'fecha_fin' => self::FECHA_FIN_PERIODO_DEMO,
                 'fecha_pago' => self::FECHA_PAGO_DEMO,
                 'frecuencia' => FrecuenciaPago::Quincenal->value,
                 'estado' => EstadoNominaPeriodo::Procesado->value,
@@ -289,7 +280,14 @@ class RhDemoSeeder extends Seeder
         return $mapa;
     }
 
-    /** @return array<string, NominaCorrida> */
+    /**
+     * Las corridas nacen en cero. Los totales NO se escriben a mano: los cuadra
+     * cuadrarCorridas() a partir de los recibos que de verdad quedaron
+     * sembrados. Ponerlos aqui es lo que tenia a la corrida diciendo que pago
+     * 130,000 cuando la suma de sus cuatro recibos daba 61,550.
+     *
+     * @return array<string, NominaCorrida>
+     */
     private function sembrarCorridas(array $periodos, array $usuarios): array
     {
         $corridas = [
@@ -297,12 +295,8 @@ class RhDemoSeeder extends Seeder
                 'periodo_id' => $periodos['2026-05']->id,
                 'numero_corrida' => 'NOM-2026-05-01',
                 'estado' => EstadoNominaCorrida::Aplicada->value,
-                'total_empleados' => 4,
-                'total_percepciones' => 143500,
-                'total_deducciones' => 13500,
-                'total_neto' => 130000,
-                'procesada_por' => $usuarios['rh@sisen.com']->id,
-                'aprobada_por' => $usuarios['admin@sisen.com']->id,
+                'procesada_por' => $usuarios[UsuariosDemoSeeder::RH]->id,
+                'aprobada_por' => $usuarios[UsuariosDemoSeeder::ADMIN]->id,
                 'generada_en' => '2026-05-14 10:00:00',
                 'aplicada_en' => self::FECHA_APLICADA_DEMO,
             ],
@@ -310,10 +304,6 @@ class RhDemoSeeder extends Seeder
                 'periodo_id' => $periodos['2026-06']->id,
                 'numero_corrida' => 'NOM-2026-06-01',
                 'estado' => EstadoNominaCorrida::Borrador->value,
-                'total_empleados' => 0,
-                'total_percepciones' => 0,
-                'total_deducciones' => 0,
-                'total_neto' => 0,
                 'procesada_por' => null,
                 'aprobada_por' => null,
                 'generada_en' => null,
@@ -324,28 +314,44 @@ class RhDemoSeeder extends Seeder
         $mapa = [];
 
         foreach ($corridas as $clave => $datos) {
-            $mapa[$clave] = NominaCorrida::withoutEvents(function () use ($datos) {
-                return NominaCorrida::updateOrCreate(
-                    ['numero_corrida' => $datos['numero_corrida']],
-                    [
-                        'organizacion_id' => null,
-                        'periodo_id' => $datos['periodo_id'],
-                        'estado' => $datos['estado'],
-                        'total_empleados' => $datos['total_empleados'],
-                        'total_percepciones' => $datos['total_percepciones'],
-                        'total_deducciones' => $datos['total_deducciones'],
-                        'total_neto' => $datos['total_neto'],
-                        'procesada_por' => $datos['procesada_por'],
-                        'aprobada_por' => $datos['aprobada_por'],
-                        'generada_en' => $datos['generada_en'],
-                        'aplicada_en' => $datos['aplicada_en'],
-                        'version_fila' => 1,
-                    ]
-                );
-            });
+            // withoutEvents para que el observer no le invente un folio nuevo a
+            // una corrida que ya trae el suyo.
+            $mapa[$clave] = NominaCorrida::withoutEvents(fn () => NominaCorrida::updateOrCreate(
+                ['numero_corrida' => $datos['numero_corrida']],
+                $datos + ['organizacion_id' => null, 'version_fila' => 1],
+            ));
         }
 
         return $mapa;
+    }
+
+    /**
+     * Deja los totales de cada corrida iguales a la suma de sus recibos.
+     *
+     * Normalmente esto lo hace ObservadorNomina solo, cada vez que se guarda un
+     * recibo. Durante el seeding no puede: DatabaseSeeder usa
+     * WithoutModelEvents (y con razon, para no llenar la bitacora de ruido),
+     * asi que los eventos de modelo estan suspendidos. Se le pide al observer
+     * que cuadre, en vez de copiar aqui su formula: el dia que cambie como se
+     * suma una corrida, este seeder no se queda atras.
+     *
+     * @param  array<string, NominaCorrida>  $corridas
+     */
+    private function cuadrarCorridas(array $corridas): void
+    {
+        $observador = app(ObservadorNomina::class);
+
+        foreach ($corridas as $corrida) {
+            // Al observer le basta un recibo para saber que corrida recalcular.
+            // Si la corrida no tiene ninguno -- la de junio sigue en borrador --
+            // uno en blanco apuntando a ella la deja correctamente en ceros.
+            $recibo = $corrida->recibos()->first() ?? new Nomina;
+            $recibo->corrida_id = $corrida->id;
+
+            $observador->saved($recibo);
+
+            $corrida->refresh();
+        }
     }
 
     private function sembrarContratos(array $empleados): void
@@ -424,18 +430,27 @@ class RhDemoSeeder extends Seeder
             [$empleados['AND'], self::FECHA_ASISTENCIA_2, self::HORA_ENTRADA_DEMO, self::HORA_SALIDA_DEMO, 'presente'],
         ];
 
+        $observador = app(ObservadorAsistencia::class);
+
         foreach ($filas as [$empleado, $fecha, $entrada, $salida, $estado]) {
-            Asistencia::updateOrCreate(
-                ['empleado_id' => $empleado->id, 'fecha' => $fecha],
-                [
-                    'hora_entrada' => $entrada,
-                    'hora_salida' => $salida,
-                    'horas_trabajadas' => 8.00,
-                    'estado' => $estado,
-                    'notas' => $estado === 'retardo' ? self::NOTA_SEEDING : null,
-                    'verificado_por' => $usuarios['rh@sisen.com']->id,
-                ]
-            );
+            $asistencia = Asistencia::firstOrNew(['empleado_id' => $empleado->id, 'fecha' => $fecha]);
+
+            $asistencia->fill([
+                'hora_entrada' => $entrada,
+                'hora_salida' => $salida,
+                'estado' => $estado,
+                'notas' => $estado === 'retardo' ? self::NOTA_SEEDING : null,
+                'verificado_por' => $usuarios[UsuariosDemoSeeder::RH]->id,
+            ]);
+
+            // `horas_trabajadas` se deriva de la entrada y la salida, no se
+            // captura: estaba fijo en 8.00 y contradecia a sus propias horas
+            // (el retardo de 08:18 a 17:05 no son 8 horas). Se le pide al mismo
+            // observer que lo calcula en la aplicacion, porque el seeding corre
+            // con los eventos de modelo suspendidos.
+            $observador->saving($asistencia);
+
+            $asistencia->save();
         }
     }
 
@@ -455,7 +470,7 @@ class RhDemoSeeder extends Seeder
                     'con_goce' => $goce,
                     'motivo' => $motivo,
                     'estado' => $estado,
-                    'revisado_por' => $estado === EstadoPermiso::Aprobado->value ? $usuarios['rh@sisen.com']->id : null,
+                    'revisado_por' => $estado === EstadoPermiso::Aprobado->value ? $usuarios[UsuariosDemoSeeder::RH]->id : null,
                     'revisado_en' => $estado === EstadoPermiso::Aprobado->value ? '2026-05-29 12:00:00' : null,
                     'comentario_revision' => $estado === EstadoPermiso::Aprobado->value ? 'Seeding demo.' : null,
                 ]

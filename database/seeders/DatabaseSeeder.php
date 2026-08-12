@@ -14,8 +14,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // El orden importa: los cimientos definen los roles que
+        // UsuariosDemoSeeder asigna, y Finanzas cierra al final porque su
+        // poliza de nomina se calcula sobre la corrida que deja RH.
         $this->call([
             CimientosSeeder::class,
+            UsuariosDemoSeeder::class,
             DatosDemoErpSeeder::class,
             RhDemoSeeder::class,
             CrmDemoSeeder::class,

@@ -4,43 +4,73 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Modules\RH\Models\Nomina;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * Datos de DEMOSTRACION de Finanzas: catalogo de cuentas, periodo fiscal,
+ * centros de costo, bancos, una poliza de nomina y un presupuesto.
+ *
+ * Se escribe con el query builder y no con modelos porque el modulo Finanzas
+ * todavia no publica los suyos (app/Modules/Finanzas/Models esta vacio).
+ *
+ * Corre DESPUES de RhDemoSeeder a proposito: la poliza de nomina y el
+ * movimiento bancario del pago se calculan a partir de la corrida que ese
+ * seeder dejo aplicada, en vez de traer cifras inventadas que no cuadran con
+ * ningun recibo. Si la corrida no existe, esas dos partes se omiten y se avisa.
+ *
+ * NO debe correr en produccion.
+ */
 class FinanzasDemoSeeder extends Seeder
 {
-    private const PASSWORD_DEMO = 'password';
-    private const MONTO_NOMINA_DEMO = '130000.00';
+    /** La corrida de nomina que RhDemoSeeder deja aplicada. */
+    private const CORRIDA_DEMO = 'NOM-2026-05-01';
 
     public function run(): void
     {
-        $admin = User::updateOrCreate(
-            ['email' => 'finanzas@sisen.com'],
-            [
-                'name' => 'Finanzas Demo',
-                'role' => 'Contador',
-                'password' => Hash::make(self::PASSWORD_DEMO),
-                'estado' => 'activo',
-                'debe_cambiar_password' => false,
-            ]
-        );
+        $this->call(UsuariosDemoSeeder::class);
 
-        $cuentas = $this->sembrarCatalogoCuentas($admin->id);
-        $periodos = $this->sembrarPeriodosFiscales($admin->id);
-        $centros = $this->sembrarCentrosCosto($admin->id);
-        $this->sembrarImpuestos($admin->id);
+        $contador = UsuariosDemoSeeder::mapa()[UsuariosDemoSeeder::FINANZAS];
+
+        $cuentas = $this->sembrarCatalogoCuentas($contador->id);
+        $periodoId = $this->sembrarPeriodoFiscal($contador->id);
+        $centros = $this->sembrarCentrosCosto($contador->id);
+        $this->sembrarImpuestos($contador->id);
         $this->sembrarTiposCambio();
-        $cuentasBancarias = $this->sembrarCuentasBancarias($admin->id);
-        $movimientos = $this->sembrarMovimientosBancarios($admin->id, $cuentasBancarias);
-        $conciliacion = $this->sembrarConciliacionBancaria($admin->id, $cuentasBancarias);
-        $this->sembrarConciliacionLinea($admin->id, $conciliacion, $movimientos);
-        $this->sembrarPolizaNomina($admin->id, $periodos, $cuentas);
-        $this->sembrarPresupuestos($admin->id, $periodos, $centros, $cuentas);
-        $this->sembrarFacturaElectronica($admin->id);
+
+        $corrida = $this->corridaDeNomina();
+
+        $cuentasBancarias = $this->sembrarCuentasBancarias($contador->id);
+        $movimientos = $this->sembrarMovimientosBancarios($contador->id, $cuentasBancarias, $corrida);
+        $conciliacion = $this->sembrarConciliacionBancaria($contador->id, $cuentasBancarias);
+        $this->sembrarConciliacionLinea($contador->id, $conciliacion, $movimientos);
+        $this->sembrarPolizaNomina($contador->id, $periodoId, $cuentas, $corrida);
+        $this->sembrarPresupuestos($contador->id, $periodoId, $centros, $cuentas, $corrida);
+        $this->sembrarFacturaElectronica($contador->id, $corrida);
 
         $this->command?->info('Datos demo de Finanzas sembrados.');
+    }
+
+    /**
+     * La corrida aplicada de RH, con sus totales ya cuadrados contra los
+     * recibos. Es la fuente de todas las cifras de nomina de este seeder.
+     */
+    private function corridaDeNomina(): ?object
+    {
+        $corrida = DB::table('nomina_corridas')
+            ->where('numero_corrida', self::CORRIDA_DEMO)
+            ->first();
+
+        if ($corrida === null) {
+            $this->command?->warn(
+                'No existe la corrida '.self::CORRIDA_DEMO.': se omiten la poliza de nomina y el pago bancario. '
+                .'Corre RhDemoSeeder antes que este.'
+            );
+        }
+
+        return $corrida;
     }
 
     /** @return array<string, int> */
@@ -64,30 +94,33 @@ class FinanzasDemoSeeder extends Seeder
         return $ids;
     }
 
-    /** @return array<string, int> */
-    private function sembrarPeriodosFiscales(int $usuarioId): array
+    /**
+     * Solo hay un periodo fiscal, el del ejercicio en curso, asi que devuelve
+     * su id y no un mapa: el mapa anterior tenia la llave '2026' fija mientras
+     * el ejercicio salia de now()->year, y quien lo usaba escribia
+     * `$periodos['2026']->id` -- una propiedad sobre un int, que es justo donde
+     * el seeder reventaba.
+     */
+    private function sembrarPeriodoFiscal(int $usuarioId): int
     {
         $ejercicio = now()->year;
-        $periodos = [
-            '2026' => [
-                'nombre' => 'Ejercicio '.$ejercicio,
-                'ejercicio' => $ejercicio,
-                'fecha_inicio' => sprintf('%d-01-01', $ejercicio),
-                'fecha_fin' => sprintf('%d-12-31', $ejercicio),
-                'estado' => 'abierto',
-                'es_periodo_cierre' => false,
-                'cerrado_por' => null,
-                'cerrado_en' => null,
-            ],
+
+        $datos = [
+            'nombre' => 'Ejercicio '.$ejercicio,
+            'ejercicio' => $ejercicio,
+            'fecha_inicio' => $ejercicio.'-01-01',
+            'fecha_fin' => $ejercicio.'-12-31',
+            'estado' => 'abierto',
+            'es_periodo_cierre' => false,
+            'cerrado_por' => null,
+            'cerrado_en' => null,
         ];
 
-        $ids = [];
-
-        foreach ($periodos as $clave => $datos) {
-            $ids[$clave] = $this->guardarFila('periodos_fiscales', ['ejercicio' => $datos['ejercicio'], 'nombre' => $datos['nombre']], $datos + $this->auditoria($usuarioId));
-        }
-
-        return $ids;
+        return $this->guardarFila(
+            'periodos_fiscales',
+            ['ejercicio' => $datos['ejercicio'], 'nombre' => $datos['nombre']],
+            $datos + $this->auditoria($usuarioId),
+        );
     }
 
     /** @return array<string, int> */
@@ -165,12 +198,24 @@ class FinanzasDemoSeeder extends Seeder
     }
 
     /** @return array<string, int> */
-    private function sembrarMovimientosBancarios(int $usuarioId, array $cuentasBancarias): array
+    private function sembrarMovimientosBancarios(int $usuarioId, array $cuentasBancarias, ?object $corrida): array
     {
         $movimientos = [
-            'DEP' => ['cuenta_bancaria_id' => $cuentasBancarias['OPER'], 'fecha' => now()->subDays(3)->toDateString(), 'concepto' => 'Depósito por cobranza demo', 'monto' => '180000.00', 'estado' => 'conciliado', 'referencia' => 'DEP-DEMO-001'],
-            'NOM' => ['cuenta_bancaria_id' => $cuentasBancarias['NOM'], 'fecha' => now()->subDays(2)->toDateString(), 'concepto' => 'Pago de nómina demo', 'monto' => '-130000.00', 'estado' => 'pendiente', 'referencia' => 'NOM-DEMO-001'],
+            'DEP' => ['cuenta_bancaria_id' => $cuentasBancarias['OPER'], 'fecha' => now()->subDays(3)->toDateString(), 'concepto' => 'Deposito por cobranza demo', 'monto' => '180000.00', 'estado' => 'conciliado', 'referencia' => 'DEP-DEMO-001'],
         ];
+
+        // El cargo del pago de nomina es EXACTAMENTE el neto de la corrida. Si
+        // no coincide, la conciliacion bancaria de la demo nace descuadrada.
+        if ($corrida !== null) {
+            $movimientos['NOM'] = [
+                'cuenta_bancaria_id' => $cuentasBancarias['NOM'],
+                'fecha' => now()->subDays(2)->toDateString(),
+                'concepto' => 'Pago de nomina '.$corrida->numero_corrida,
+                'monto' => '-'.$corrida->total_neto,
+                'estado' => 'pendiente',
+                'referencia' => $corrida->numero_corrida,
+            ];
+        }
 
         $ids = [];
 
@@ -211,19 +256,37 @@ class FinanzasDemoSeeder extends Seeder
         ]);
     }
 
-    private function sembrarPolizaNomina(int $usuarioId, array $periodos, array $cuentas): int
+    /**
+     * La poliza del pago de nomina, cuadrada contra la corrida real:
+     *
+     *     Debe  5100 Sueldos y salarios     = percepciones
+     *     Haber 2100 Impuestos por pagar    = deducciones (ISR, IMSS y demas)
+     *     Haber 1100 Caja y bancos          = neto pagado
+     *
+     * Antes la poliza declaraba 143,500.00 de total mientras sus dos renglones
+     * sumaban 130,000.00: ni cuadraba consigo misma ni con la nomina. Ahora las
+     * tres cifras salen de nomina_corridas y el asiento cierra por definicion
+     * (percepciones = deducciones + neto).
+     */
+    private function sembrarPolizaNomina(int $usuarioId, int $periodoId, array $cuentas, ?object $corrida): ?int
     {
-        $polizaId = $this->guardarFila('polizas', ['numero_poliza' => 'POL-2026-0001'], [
-            'numero_poliza' => 'POL-2026-0001',
-            'periodo_fiscal_id' => $periodos['2026']->id,
+        if ($corrida === null) {
+            return null;
+        }
+
+        $numero = 'POL-'.now()->year.'-0001';
+
+        $polizaId = $this->guardarFila('polizas', ['numero_poliza' => $numero], [
+            'numero_poliza' => $numero,
+            'periodo_fiscal_id' => $periodoId,
             'fecha' => now()->subDays(2)->toDateString(),
-            'concepto' => 'Registro de nómina demo',
-            'referencia' => 'NOM-DEMO-001',
+            'concepto' => 'Registro de nomina '.$corrida->numero_corrida,
+            'referencia' => $corrida->numero_corrida,
             'origen_tipo' => 'nomina',
-            'origen_id' => 1,
+            'origen_id' => $corrida->id,
             'estado' => 'contabilizada',
-            'total_debe' => '143500.00',
-            'total_haber' => '143500.00',
+            'total_debe' => $corrida->total_percepciones,
+            'total_haber' => $corrida->total_percepciones,
             'contabilizada_por' => $usuarioId,
             'contabilizada_en' => now(),
             'cancelada_por' => null,
@@ -235,39 +298,53 @@ class FinanzasDemoSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        $this->guardarFila('poliza_lineas', ['poliza_id' => $polizaId, 'cuenta_id' => $cuentas['5100'], 'periodo_fiscal_id' => $periodos['2026']->id], [
-            'poliza_id' => $polizaId,
-            'cuenta_id' => $cuentas['5100'],
-            'periodo_fiscal_id' => $periodos['2026']->id,
-            'centro_costo_id' => null,
-            'concepto' => 'Sueldos y salarios demo',
-            'debe' => self::MONTO_NOMINA_DEMO,
-            'haber' => '0.00',
-            'referencia' => 'NOM-DEMO-001',
-            'created_at' => now(),
-        ]);
+        $renglones = [
+            ['cuenta' => '5100', 'concepto' => 'Sueldos y salarios del periodo', 'debe' => $corrida->total_percepciones, 'haber' => '0.00'],
+            ['cuenta' => '2100', 'concepto' => 'Retenciones y deducciones por pagar', 'debe' => '0.00', 'haber' => $corrida->total_deducciones],
+            ['cuenta' => '1100', 'concepto' => 'Pago neto de nomina', 'debe' => '0.00', 'haber' => $corrida->total_neto],
+        ];
 
-        $this->guardarFila('poliza_lineas', ['poliza_id' => $polizaId, 'cuenta_id' => $cuentas['2100'], 'periodo_fiscal_id' => $periodos['2026']->id], [
-            'poliza_id' => $polizaId,
-            'cuenta_id' => $cuentas['2100'],
-            'periodo_fiscal_id' => $periodos['2026']->id,
-            'centro_costo_id' => null,
-            'concepto' => 'Pasivo de nómina demo',
-            'debe' => '0.00',
-            'haber' => self::MONTO_NOMINA_DEMO,
-            'referencia' => 'NOM-DEMO-001',
-            'created_at' => now(),
-        ]);
+        foreach ($renglones as $renglon) {
+            // chk_poliza_lineas_un_lado exige que un renglon tenga debe O haber,
+            // nunca los dos en cero: una corrida sin deducciones no lleva ese
+            // renglon en vez de mandarlo en ceros y que la base lo rechace.
+            if ((float) $renglon['debe'] <= 0 && (float) $renglon['haber'] <= 0) {
+                continue;
+            }
+
+            $this->guardarFila(
+                'poliza_lineas',
+                ['poliza_id' => $polizaId, 'cuenta_id' => $cuentas[$renglon['cuenta']], 'periodo_fiscal_id' => $periodoId],
+                [
+                    'poliza_id' => $polizaId,
+                    'cuenta_id' => $cuentas[$renglon['cuenta']],
+                    'periodo_fiscal_id' => $periodoId,
+                    'centro_costo_id' => null,
+                    'concepto' => $renglon['concepto'],
+                    'debe' => $renglon['debe'],
+                    'haber' => $renglon['haber'],
+                    'referencia' => $corrida->numero_corrida,
+                    'created_at' => now(),
+                ]
+            );
+        }
+
+        // La corrida queda apuntando a su poliza, que es justo el enlace que
+        // ServicioCorridaNomina::aplicar() dejara de tarea cuando Finanzas
+        // publique su contabilizador.
+        DB::table('nomina_corridas')->where('id', $corrida->id)->update(['poliza_id' => $polizaId]);
 
         return $polizaId;
     }
 
-    private function sembrarPresupuestos(int $usuarioId, array $periodos, array $centros, array $cuentas): void
+    private function sembrarPresupuestos(int $usuarioId, int $periodoId, array $centros, array $cuentas, ?object $corrida): void
     {
-        $presupuestoId = $this->guardarFila('presupuestos', ['periodo_fiscal_id' => $periodos['2026']->id, 'nombre' => 'Presupuesto anual 2026'], [
-            'periodo_fiscal_id' => $periodos['2026']->id,
+        $nombre = 'Presupuesto anual '.now()->year;
+
+        $presupuestoId = $this->guardarFila('presupuestos', ['periodo_fiscal_id' => $periodoId, 'nombre' => $nombre], [
+            'periodo_fiscal_id' => $periodoId,
             'centro_costo_id' => $centros['CORP'],
-            'nombre' => 'Presupuesto anual 2026',
+            'nombre' => $nombre,
             'estado' => 'aprobado',
             'monto_total' => '2500000.00',
             'aprobado_por' => $usuarioId,
@@ -279,8 +356,10 @@ class FinanzasDemoSeeder extends Seeder
         ]);
 
         $lineas = [
-            ['cuenta_id' => $cuentas['5100'], 'mes' => 1, 'monto_proyectado' => '210000.00', 'monto_real' => '130000.00'],
-            ['cuenta_id' => $cuentas['4100'], 'mes' => 1, 'monto_proyectado' => '300000.00', 'monto_real' => '320000.00'],
+            // El ejercido de sueldos es lo que de verdad costo la corrida, para
+            // que el comparativo presupuesto contra real no mienta.
+            ['cuenta_id' => $cuentas['5100'], 'mes' => 5, 'monto_proyectado' => '210000.00', 'monto_real' => $corrida?->total_percepciones ?? '0.00'],
+            ['cuenta_id' => $cuentas['4100'], 'mes' => 5, 'monto_proyectado' => '300000.00', 'monto_real' => '320000.00'],
         ];
 
         foreach ($lineas as $linea) {
@@ -288,16 +367,24 @@ class FinanzasDemoSeeder extends Seeder
         }
     }
 
-    private function sembrarFacturaElectronica(int $usuarioId): void
+    private function sembrarFacturaElectronica(int $usuarioId, ?object $corrida): void
     {
-        $nominaId = DB::table('nominas')->value('id');
+        // Un recibo PAGADO de la corrida demo, no el primero que aparezca en la
+        // tabla: un CFDI de nomina timbra un pago que ya ocurrio.
+        $nominaId = $corrida === null ? null : DB::table('nominas')
+            ->where('corrida_id', $corrida->id)
+            ->where('estado', 'pagada')
+            ->orderBy('id')
+            ->value('id');
 
-        $this->guardarFila('facturas_electronicas', ['serie' => 'NOM', 'folio' => '0001', 'tipo_documento' => 'nomina'], [
+        // El unico de la tabla es (serie, folio); `tipo_documento` no forma
+        // parte de el y buscarlo de mas dejaria insertar un segundo NOM-0001.
+        $this->guardarFila('facturas_electronicas', ['serie' => 'NOM', 'folio' => '0001'], [
             'organizacion_id' => null,
             'serie' => 'NOM',
             'folio' => '0001',
             'tipo_documento' => 'nomina',
-            'modelo_tipo' => $nominaId ? 'App\\Modules\\RH\\Models\\Nomina' : null,
+            'modelo_tipo' => $nominaId === null ? null : Nomina::class,
             'modelo_id' => $nominaId,
             'uuid' => null,
             'ruta_xml' => null,
@@ -313,17 +400,31 @@ class FinanzasDemoSeeder extends Seeder
         ]);
     }
 
+    /**
+     * Alta o actualizacion de una fila, devolviendo su id.
+     *
+     * En la actualizacion se respeta `created_at`: es la fecha del alta
+     * original y volver a sembrar no tiene por que reescribirla. Antes se
+     * mandaba siempre, asi que cada corrida del seeder movia la fecha de alta
+     * de todo lo que ya existia.
+     */
     private function guardarFila(string $tabla, array $unicos, array $datos): int
     {
-        DB::table($tabla)->updateOrInsert($unicos, $datos);
-
         $consulta = DB::table($tabla);
 
         foreach ($unicos as $columna => $valor) {
             $consulta->where($columna, $valor);
         }
 
-        return (int) $consulta->value('id');
+        $id = $consulta->value('id');
+
+        if ($id !== null) {
+            DB::table($tabla)->where('id', $id)->update(Arr::except($datos, ['created_at']));
+
+            return (int) $id;
+        }
+
+        return (int) DB::table($tabla)->insertGetId($unicos + $datos);
     }
 
     private function auditoria(int $usuarioId): array

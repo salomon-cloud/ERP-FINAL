@@ -19,12 +19,9 @@ use App\Modules\CRM\Models\Oportunidad;
 use App\Modules\CRM\Models\Prospecto;
 use App\Modules\CRM\Models\Tarea;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class CrmDemoSeeder extends Seeder
 {
-    private const PASSWORD_DEMO = 'password';
-
     public function run(): void
     {
         $usuarios = $this->sembrarUsuarios();
@@ -40,37 +37,25 @@ class CrmDemoSeeder extends Seeder
         $this->command?->info('Datos demo de CRM sembrados.');
     }
 
-    /** @return array<string, User> */
+    /**
+     * Los usuarios los define UsuariosDemoSeeder, que ademas les da el rol
+     * `Ventas` -- el unico que trae los privilegios crm.*. Antes se creaban
+     * aqui con rol `Contador`, que solo alcanza para Finanzas: podian entrar al
+     * sistema pero el middleware `permission:crm.*` les cerraba todo el modulo.
+     *
+     * @return array<string, User>
+     */
     private function sembrarUsuarios(): array
     {
-        $usuarios = [
-            'admin@sisen.com' => ['name' => 'Administrador SISEN', 'role' => 'Administrador'],
-            'crm@sisen.com' => ['name' => 'Equipo CRM', 'role' => 'Contador'],
-            'ventas@sisen.com' => ['name' => 'Ventas Demo', 'role' => 'Contador'],
+        $this->call(UsuariosDemoSeeder::class);
+
+        $usuarios = UsuariosDemoSeeder::mapa();
+
+        return [
+            'admin' => $usuarios[UsuariosDemoSeeder::ADMIN],
+            'crm' => $usuarios[UsuariosDemoSeeder::CRM],
+            'ventas' => $usuarios[UsuariosDemoSeeder::VENTAS],
         ];
-
-        $mapa = [];
-
-        foreach ($usuarios as $email => $datos) {
-            if ($email === 'admin@sisen.com') {
-                $clave = 'admin';
-            } elseif ($email === 'crm@sisen.com') {
-                $clave = 'crm';
-            } else {
-                $clave = 'ventas';
-            }
-
-            $mapa[$clave] = User::updateOrCreate(
-                ['email' => $email],
-                $datos + [
-                    'password' => Hash::make(self::PASSWORD_DEMO),
-                    'estado' => 'activo',
-                    'debe_cambiar_password' => false,
-                ]
-            );
-        }
-
-        return $mapa;
     }
 
     private function sembrarEmpresas(User $admin): Empresa
