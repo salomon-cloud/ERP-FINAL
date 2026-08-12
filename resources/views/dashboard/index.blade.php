@@ -28,7 +28,7 @@
     @endforeach
 </div>
 
-<div class="row g-3 mb-4">
+<div class="d-flex flex-wrap gap-2 mb-4 dashboard-shortcuts">
     @php
         $quickLinks = auth()->user()->role === 'Empleado'
             ? [['Mi informacion', 'empleados.index', 'bi-person'], ['Mis nominas', 'nominas.index', 'bi-cash-stack'], ['Mis asistencias', 'asistencias.index', 'bi-calendar-check'], ['Mis permisos', 'permisos.index', 'bi-calendar2-week']]
@@ -36,12 +36,9 @@
     @endphp
     @foreach($quickLinks as [$label, $route, $icon])
         @if(Route::has($route))
-            <div class="col-md-3 col-6">
-                <a href="{{ route($route) }}" class="soft-card quick-link p-3 d-flex align-items-center gap-3">
-                    <div class="stat-icon"><i class="bi {{ $icon }}"></i></div>
-                    <strong>{{ $label }}</strong>
-                </a>
-            </div>
+            <a href="{{ route($route) }}" class="btn btn-outline-primary btn-sm dashboard-shortcut">
+                <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+            </a>
         @endif
     @endforeach
 </div>

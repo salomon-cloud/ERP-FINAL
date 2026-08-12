@@ -24,13 +24,14 @@ body {
 .sidebar {
     width: 280px;
     background: linear-gradient(180deg, var(--sisen-blue-dark), #092b52);
-    color: #fff;
+    color: #f8fafc;
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     z-index: 1040;
     transition: transform .2s ease;
+    overflow-y: auto;
 }
 .sidebar-brand { padding: 1.35rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.12); }
 .brand-mark {
@@ -54,8 +55,8 @@ body {
 }
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
-    background: rgba(255,255,255,.12);
-    color: #fff;
+    background: #dbeafe;
+    color: #0b3d75;
 }
 /* Submenu de un modulo con varias entradas (ver layouts/app.blade.php). */
 .sidebar .nav-link-sub {
@@ -79,7 +80,6 @@ body {
     border-top: 1px solid rgba(255,255,255,.12);
     padding-top: .9rem;
 }
-.sidebar { overflow-y: auto; }
 .main-content {
     margin-left: 280px;
     width: calc(100% - 280px);
@@ -116,6 +116,20 @@ body {
     color: var(--sisen-blue);
     font-size: 1.25rem;
 }
+.page-header-actions {
+    flex: 0 0 auto;
+    align-items: center;
+}
+.page-header-actions .btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 38px;
+    padding: .45rem .85rem;
+    white-space: nowrap;
+}
+.page-header-actions .btn i {
+    vertical-align: middle;
+}
 .table thead th {
     color: #516072;
     font-size: .78rem;
@@ -132,7 +146,26 @@ body {
 .badge-permiso { background: #dbeafe; color: #1e40af; }
 .form-label { font-weight: 700; color: #374151; }
 .action-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; }
-.quick-link { text-decoration: none; color: var(--sisen-text); }
+.dashboard-shortcuts {
+    align-items: center;
+}
+.dashboard-shortcut {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-height: 38px;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.quick-link {
+    text-decoration: none;
+    color: var(--sisen-text);
+    display: flex;
+    align-items: center;
+    min-height: 76px;
+}
 .quick-link:hover { color: var(--sisen-blue); }
 .mobile-overlay { display: none; }
 
@@ -151,7 +184,37 @@ body {
 }
 
 @media print {
+    @page {
+        size: A4 landscape;
+        margin: 8mm;
+    }
+
     .sidebar, .topbar, .no-print, .mobile-overlay { display: none !important; }
     .main-content { margin-left: 0; width: 100%; }
-    .soft-card { box-shadow: none; border: 1px solid #d1d5db; }
+    .content-wrap {
+        padding: 0 !important;
+    }
+    .soft-card {
+        box-shadow: none;
+        border: 1px solid #d1d5db;
+        margin-bottom: 10px;
+    }
+    .table-responsive {
+        overflow: visible !important;
+    }
+    .table {
+        width: 100% !important;
+        table-layout: fixed;
+        font-size: 10.5px;
+    }
+    .table th,
+    .table td {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        padding: 0.25rem 0.35rem;
+        line-height: 1.2;
+    }
+    .table thead th {
+        font-size: 10px;
+    }
 }

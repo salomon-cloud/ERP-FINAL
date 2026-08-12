@@ -22,6 +22,6 @@
     </div>
 
     @if (trim($slot) !== '')
-        <div class="d-flex flex-wrap gap-2 no-print">{{ $slot }}</div>
+        <div class="page-header-actions d-flex flex-wrap gap-2 no-print">{{ $slot }}</div>
     @endif
 </div>
